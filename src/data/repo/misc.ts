@@ -14,13 +14,14 @@ const liveRows = async <T extends 'goals' | 'body_measurements' | 'readiness_rec
 
 // ── Body measurements ───────────────────────────────────────────────────────
 export const listBody = async (): Promise<BodyMeasurement[]> => ((await liveRows('body_measurements')) as BodyMeasurement[]).sort((a, b) => (a.measured_at < b.measured_at ? -1 : 1));
-export async function saveBody(data: Omit<NewRow<'body_measurements'>, 'conditions' | 'notes' | 'body_fat_method'> & Partial<Pick<BodyMeasurement, 'conditions' | 'notes' | 'body_fat_method'>>, id?: string): Promise<void> {
-  const full = { conditions: null, notes: null, body_fat_method: null, ...data };
+export type BodyInput = Partial<Omit<BodyMeasurement, keyof import('@/domain/types').SyncFields>> & { measured_at: string };
+export async function saveBody(data: BodyInput, id?: string): Promise<void> {
+  const blank = { bodyweight_kg: null, waist_cm: null, chest_cm: null, arm_cm: null, thigh_cm: null, hip_cm: null, calf_cm: null, body_fat_pct: null, body_fat_method: null, muscle_mass_kg: null, conditions: null, notes: null };
   if (id) {
     const before = await tbl('body_measurements').get(id);
-    await update('body_measurements', id, full);
-    await audit('body_measurement', id, 'update', before ? { bodyweight_kg: before.bodyweight_kg } : null, { bodyweight_kg: full.bodyweight_kg ?? null });
-  } else await insert('body_measurements', full);
+    await update('body_measurements', id, data);
+    await audit('body_measurement', id, 'update', before ? { bodyweight_kg: before.bodyweight_kg } : null, { bodyweight_kg: data.bodyweight_kg ?? null });
+  } else await insert('body_measurements', { ...blank, ...data });
 }
 export async function deleteBody(id: string): Promise<void> { await update('body_measurements', id, { deleted_at: nowIso() }); }
 
