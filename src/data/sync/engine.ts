@@ -3,7 +3,7 @@ import { SYNC_ORDER } from '@/domain/types';
 import { allTables, db, getMeta, setMeta, tbl, type Row } from '../db';
 import { nowIso, runtime } from '../runtime';
 import { strip } from '../write';
-import { type ConflictNote, type PullCursor, type Remote, type RemoteRow, SyncError, type SyncSnapshot } from './types';
+import { type ConflictNote, NIL_UUID, type PullCursor, type Remote, type RemoteRow, SyncError, type SyncSnapshot } from './types';
 
 /**
  * Local-first sync (documented in docs/ARCHITECTURE.md → Synchronisation).
@@ -134,6 +134,7 @@ export async function pullAll(remote: Remote): Promise<number> {
   let total = 0;
   for (const table of SYNC_ORDER) {
     let cursor = await getMeta<PullCursor | null>(`pull_cursor:${table}`, null);
+    if (cursor && !cursor.id) cursor = { ...cursor, id: NIL_UUID }; // cursors saved by earlier builds used '' (invalid uuid)
     for (;;) {
       const rows = await remote.pull(table, cursor, PULL_PAGE);
       if (!rows.length) break;
@@ -146,7 +147,7 @@ export async function pullAll(remote: Remote): Promise<number> {
       // persist a cursor slightly in the past so a transaction that committed late is picked up on the next pull
       const back = new Date(ts(cursor.ts) - LOOKBACK_MS).toISOString();
       const prev = await getMeta<PullCursor | null>(`pull_cursor:${table}`, null);
-      const next: PullCursor = prev && ts(prev.ts) > ts(back) ? prev : { ts: back, id: '' };
+      const next: PullCursor = prev && ts(prev.ts) > ts(back) ? prev : { ts: back, id: NIL_UUID };
       await setMeta(`pull_cursor:${table}`, next);
     }
   }

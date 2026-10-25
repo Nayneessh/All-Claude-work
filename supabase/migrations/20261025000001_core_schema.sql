@@ -5,7 +5,6 @@
 --   * Planned values and actual values live in separate columns; program versions are immutable history.
 --   * Sync is deterministic last-writer-wins on client_updated_at (see mg_row_guard()).
 
-create extension if not exists pgcrypto;
 
 -- ---------------------------------------------------------------------------
 -- profiles

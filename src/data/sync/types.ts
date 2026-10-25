@@ -10,6 +10,8 @@ export class SyncError extends Error {
   }
 }
 
+/** Smallest possible uuid — the id part of a cursor that has no row yet (an empty string is not a valid uuid in Postgres). */
+export const NIL_UUID = '00000000-0000-0000-0000-000000000000';
 export interface PullCursor { ts: string; id: string }
 
 /** The server contract. Implemented by Supabase in production and by an in-memory server in tests. */

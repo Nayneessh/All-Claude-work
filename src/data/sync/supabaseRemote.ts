@@ -1,6 +1,6 @@
 import type { PostgrestError, SupabaseClient } from '@supabase/supabase-js';
 import type { TableName } from '@/domain/types';
-import { type PullCursor, type Remote, type RemoteRow, SyncError } from './types';
+import { NIL_UUID, type PullCursor, type Remote, type RemoteRow, SyncError } from './types';
 
 /** Constraint / RLS / validation errors will never succeed on retry; everything else (network, 5xx, 429, expired token) will. */
 export function toSyncError(e: PostgrestError | { message: string; code?: string; status?: number }): SyncError {
@@ -25,7 +25,7 @@ export function supabaseRemote(client: SupabaseClient): Remote {
     async pull(table: TableName, cursor: PullCursor | null, limit: number): Promise<RemoteRow[]> {
       try {
         let q = client.from(table).select('*').order('server_updated_at', { ascending: true }).order('id', { ascending: true }).limit(limit);
-        if (cursor) q = q.or(`server_updated_at.gt.${cursor.ts},and(server_updated_at.eq.${cursor.ts},id.gt.${cursor.id})`);
+        if (cursor) q = q.or(`server_updated_at.gt.${cursor.ts},and(server_updated_at.eq.${cursor.ts},id.gt.${cursor.id || NIL_UUID})`);
         const { data, error } = await q;
         if (error) throw toSyncError(error);
         return (data ?? []) as RemoteRow[];

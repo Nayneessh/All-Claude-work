@@ -41,6 +41,7 @@
   "devDependencies": {
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.5.3",
+    "@electric-sql/pglite": "^0.5.11",
     "@eslint/js": "^9.39.5",
     "@playwright/test": "1.63.0",
     "@types/node": "^22.10.0",
@@ -57,5 +58,7 @@
     "vite": "^7.3.7",
     "vitest": "^3.2.7"
   },
-  "engines": { "node": ">=22" }
+  "engines": {
+    "node": ">=22"
+  }
 }
