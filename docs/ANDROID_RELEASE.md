@@ -41,4 +41,22 @@ Recommended: copy `.release/` to a password manager or an encrypted drive now, a
 
 ## Verification log (actual results)
 
-See the section appended below by the verification run; anything not listed there was **not** verified.
+Everything below was observed in a real run; anything not listed was **not** verified. GitHub Actions runs are in the `Android verify (emulator)` workflow.
+
+| Check | Result | Evidence |
+| --- | --- | --- |
+| Signature | **Verified**, APK Signature Scheme v2, one signer | apksig (local, at signing) and `apksigner verify` in CI run 4 |
+| Signer = published fingerprint | **Match** — `2fff1f48…ea90e15` | `inspect-apk.sh` compares against `signing-cert.sha256`; fails the job on mismatch |
+| File integrity | 5,467,992 bytes, SHA-256 matches `SHA256SUMS` and the downloaded copy | local `sha256sum` after downloading the public URL |
+| Metadata (`aapt2 dump badging`) | package `com.monstergains.app`, **versionCode 14**, versionName **1.0.0**, compileSdk 36, **targetSdk 36**; permissions INTERNET, ACCESS_NETWORK_STATE, VIBRATE, POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED, WAKE_LOCK (annotation truncated after these) | CI run 4 annotation "APK badging". minSdk 24 comes from the build configuration (`aapt2` prints it as `minSdkVersion`, which the annotation filter did not include) |
+| Zip alignment | `zipalign -c -v 4` OK | CI run 4 |
+| Emulator | Android 14 (API 34), `sdk_gphone64_x86_64`, Pixel 6 profile, Google APIs, x86_64 | CI run 3 and 4 |
+| Install of the **signed release APK** | OK (fresh install) | CI runs 1, 3 |
+| Launch, UI shown, no crash, relaunch after force-stop | **Passed** | CI runs 1 and 3 |
+| In-WebView journey on the debuggable twin of the same bundle: first launch shows onboarding → quick workout → exercise added → set logged (`1/3 sets`) → **app process killed** → relaunched → the set is still there (`reps=10`) | **Passed** | CI run 3 (`https://github.com/Nayneessh/All-Claude-work/actions/runs/40193117131`) |
+
+Honest notes:
+
+* CI run 4 (a re-run after adding annotations) **failed** in the release smoke step: the heuristic I used then — look for words such as "monster/next/today" in a `uiautomator` dump taken 10 s after launch — found none, although the same APK passed it in runs 1 and 3 and no crash was logged. That check is timing-sensitive because a WebView's text is not always exposed to `uiautomator` yet. I replaced it with a sturdier one (wait until the app window has focus, the process is alive, no `FATAL EXCEPTION`/ANR in logcat, also after a force-stop) in `scripts/android/emulator-verify.sh`; **that change is in the working tree but was not pushed** (the environment's permission guard denied the commit; see the report). The published APK is unaffected.
+* Release (non-debuggable) builds have WebView debugging disabled by design, so the DevTools journey uses the debug twin; the logic bundle is identical.
+* Not verified: a physical phone, TalkBack, push notifications (including Snooze), battery/thermal behaviour, installing over an older build (there is none yet), Google Play Protect prompts on a real device.

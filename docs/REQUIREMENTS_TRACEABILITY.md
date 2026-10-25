@@ -259,4 +259,6 @@ Test names: `unit` = Vitest file under `src/`, `rls` / `sync-pg` = real-Postgres
 | Name "Monster Gains", supplied logo/icon, golden/night-green/night-blue brand | ✅ `src/brand`, `resources/` (icon + splash generated from the supplied artwork) |
 | "I should never lose my data or progress" | ✅ five layers (ARCHITECTURE §7); the one residual risk — losing the **signing key**, which blocks in-place updates — is covered in ANDROID_RELEASE.md |
 | Supabase backend with migrations, RLS tested with different identities | 🟡 migrations + 30 real-Postgres tests ✅; **applying to the live project is pending** (the MCP server asked a question that has not been answered) |
-| Signed APK, metadata inspected, signature verified, emulator install/launch | see ANDROID_RELEASE.md for the actual result of each step |
+| Signed APK, metadata inspected, signature verified, emulator install/launch, persistence | ✅ signed (v2, RSA-4096), metadata + signature + alignment inspected in CI, installed/launched on an Android 14 emulator, data survived a process kill (CI run 3). 🟡 one re-run (run 4) failed in a flaky smoke heuristic; a fix is prepared but unpushed. ⏳ not tried on a physical phone. Details: ANDROID_RELEASE.md |
+| Direct download link, verified | ✅ HTTP 200 and identical SHA-256 after downloading the public URL |
+| Documentation set (README, ARCHITECTURE, IMPLEMENTATION_PLAN, DATA_MODEL, TESTING, ANDROID_RELEASE, REQUIREMENTS_TRACEABILITY) | ✅ in `docs/` |

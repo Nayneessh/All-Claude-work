@@ -73,6 +73,10 @@ Sync engine against the real schema (6): full logged workout accepted by every r
 | 9 Lifecycle | `05-…` ×4 | rest timer survives process restart; back navigation never duplicates/loses a workout; a screen whose code fails to load shows a recoverable message; 320 px width: no horizontal scroll, tap target ≥ 44 px, 130 % text still reachable |
 | Add activity | `06-…` | MMA logged as its own session; Monday strength still planned |
 
+### Android runtime (GitHub Actions emulator, Android 14 / API 34) — see ANDROID_RELEASE.md for the full log
+
+The **signed release APK** installed on a fresh emulator, launched without a crash and relaunched after a force-stop (CI runs 1 and 3). The debuggable twin of the same bundle was driven inside Android's real WebView: first launch → set logged → app process killed → relaunch → the logged set (reps = 10) still there (CI run 3, passed). One later re-run (CI run 4) failed in my first-generation release smoke heuristic (text-matching a `uiautomator` dump); a sturdier check is written but not pushed — details and honesty notes in ANDROID_RELEASE.md. Static APK checks (signature v2, signer fingerprint = published, zipalign, aapt2 metadata) passed in run 4.
+
 ### Performance (measured)
 
 | Measure | Result | Budget in test |
