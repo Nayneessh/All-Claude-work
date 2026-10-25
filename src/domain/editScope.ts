@@ -136,6 +136,8 @@ export interface PlanEditInput {
   nameOf: (exerciseId: string) => string;
   /** True when no non-skipped session was ever created from the current version. */
   versionIsUnused: boolean;
+  /** True when today's workout is already started/finished: "from today" then really means "from tomorrow", so a day already performed is never re-prescribed. */
+  todayHasSession?: boolean;
   /** Dates the program is live on (so preview skips paused/ended days). */
   isLiveOn: (date: ISODate) => boolean;
   horizonWeeks?: number;
@@ -176,7 +178,7 @@ export function planProgramEdit(input: PlanEditInput): EditPlan {
     };
   }
 
-  const effectiveFrom = scope === 'program_from_date' ? (input.targetDate ?? today) : today;
+  const effectiveFrom = scope === 'program_from_date' ? (input.targetDate ?? today) : input.todayHasSession ? addDays(today, 1) : today;
   const horizon = addDays(effectiveFrom, (input.horizonWeeks ?? 8) * 7);
   const preview: PreviewRow[] = [];
   for (let d = effectiveFrom; d <= horizon; d = addDays(d, 1)) {
