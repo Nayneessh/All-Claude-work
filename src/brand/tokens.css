@@ -1,0 +1,63 @@
+/*
+ * Monster Gains design tokens — the ONLY place raw colour values live.
+ * Palette: Golden #D4AF37 · Night Green #071F16 · Night Blue #0B1630 (+ neutrals and status colours).
+ * Components reference these variables; src/brand/tokens.test.ts fails the build if raw hex values appear elsewhere.
+ */
+:root {
+  /* brand */
+  --gold: #D4AF37;
+  --night-green: #071F16;
+  --night-blue: #0B1630;
+  --near-black: #050807;
+  --off-white: #F5F4EE;
+  --muted: #A8B3AE;
+
+  /* derived surfaces */
+  --bg: var(--near-black);
+  --bg-green: var(--night-green);
+  --bg-blue: var(--night-blue);
+  --card: #0C2B20;
+  --card-raised: #11382A;
+  --card-blue: #101D3D;
+  --card-blue-raised: #172750;
+  --line: rgba(245, 244, 238, 0.10);
+  --line-strong: rgba(245, 244, 238, 0.20);
+  --gold-soft: rgba(212, 175, 55, 0.14);
+  --gold-line: rgba(212, 175, 55, 0.45);
+  --gold-dim: #9C8128;
+  --text: var(--off-white);
+  --text-dim: var(--muted);
+  --on-gold: #141006;
+
+  /* status (all ≥ 4.5:1 on the dark surfaces) */
+  --success: #5BD39B;
+  --warning: #F2A65A;
+  --danger: #FF7B6E;
+  --info: #7FAEFF;
+
+  /* chart series (gold first, then colours distinguishable on green and blue) */
+  --series-1: var(--gold);
+  --series-2: #5BD39B;
+  --series-3: #7FAEFF;
+  --series-4: #F2A65A;
+  --series-5: #C792EA;
+  --series-6: #FF7B6E;
+
+  /* shape & rhythm */
+  --radius-s: 10px;
+  --radius-m: 16px;
+  --radius-l: 22px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --tap: 48px;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  --font-body: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Barlow Condensed', 'Inter Variable', system-ui, sans-serif;
+  --text-scale: 1;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}

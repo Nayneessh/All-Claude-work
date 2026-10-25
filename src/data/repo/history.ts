@@ -154,3 +154,33 @@ export async function compareSessions(aId: string, bId: string): Promise<Exercis
   void profile;
   return [...rows.values()];
 }
+
+export interface SessionSummary { id: string; workingSets: number; reps: number; volumeKg: number; unknownVolumeSets: number; exercises: number; prs: number }
+
+/** Totals for a page of sessions (one indexed read per page, not per session). */
+export async function sessionSummaries(ids: string[], today: ISODate): Promise<Map<string, SessionSummary>> {
+  const out = new Map<string, SessionSummary>();
+  if (!ids.length) return out;
+  const sets = (await tbl('set_records').where('session_id').anyOf(ids).toArray()).filter((s) => !s.deleted_at).map(clean) as SetRecord[];
+  const sessions = (await tbl('workout_sessions').bulkGet(ids)).filter((s): s is NonNullable<typeof s> => !!s).map((s) => liteSession(clean(s) as WorkoutSession));
+  const exercises = new Map((await tbl('exercises').toArray()).map((e) => [e.id, lite(clean(e) as Exercise)]));
+  const opts = await analyticsOptions(today);
+  for (const sess of sessions) {
+    const ctx: AnalyticsCtx = { exercises, sessions: new Map([[sess.id, { ...sess, status: sess.status === 'planned' ? 'completed_as_planned' : sess.status }]]), opts };
+    const mine = sets.filter((s) => s.session_id === sess.id);
+    const st = periodStats(mine, ctx);
+    out.set(sess.id, { id: sess.id, workingSets: st.workingSets, reps: st.reps, volumeKg: st.volumeKg, unknownVolumeSets: st.unknownVolumeSets, exercises: new Set(mine.filter((s) => s.status === 'completed').map((s) => s.exercise_id)).size, prs: 0 });
+  }
+  return out;
+}
+
+export async function auditForSession(sessionId: string): Promise<import('@/domain/types').AuditEvent[]> {
+  const setIds = new Set((await tbl('set_records').where('session_id').equals(sessionId).toArray()).map((s) => s.id));
+  const seIds = new Set((await tbl('session_exercises').where('session_id').equals(sessionId).toArray()).map((s) => s.id));
+  const all = await tbl('audit_events').toArray();
+  return all.filter((a) => !a.deleted_at && (a.entity_id === sessionId || setIds.has(a.entity_id) || seIds.has(a.entity_id))).map((a) => clean(a) as import('@/domain/types').AuditEvent).sort((a, b) => (a.occurred_at < b.occurred_at ? 1 : -1));
+}
+
+export async function listArchivedSessions(): Promise<WorkoutSession[]> {
+  return (await tbl('workout_sessions').toArray()).filter((s) => !!s.deleted_at).map((s) => clean(s) as WorkoutSession).sort((a, b) => (a.session_date < b.session_date ? 1 : -1));
+}

@@ -1,4 +1,5 @@
 import { Capacitor } from '@capacitor/core';
+import { NATIVE } from '@/brand/tokens';
 
 /** Thin wrappers over Capacitor with web fallbacks, so the same code runs in the browser (tests/preview) and on Android. */
 export const isNative = (): boolean => Capacitor.isNativePlatform();
@@ -112,7 +113,7 @@ export async function setStatusBar(): Promise<void> {
   try {
     const { StatusBar, Style } = await import('@capacitor/status-bar');
     await StatusBar.setStyle({ style: Style.Dark });
-    await StatusBar.setBackgroundColor({ color: '#071F16' });
+    await StatusBar.setBackgroundColor({ color: NATIVE.nightGreen });
   } catch { /* cosmetic */ }
 }
 

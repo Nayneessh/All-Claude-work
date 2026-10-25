@@ -38,6 +38,8 @@ export async function pendingCount(): Promise<number> {
 export async function loadFailures(): Promise<FailureMap> { return getMeta<FailureMap>('sync_failures', {}); }
 export async function loadConflicts(): Promise<ConflictNote[]> { return getMeta<ConflictNote[]>('sync_conflicts', []); }
 export async function clearConflicts(): Promise<void> { await setMeta('sync_conflicts', []); }
+/** Forget held-back rows so they are attempted again (e.g. after the server-side problem was fixed). */
+export async function retryFailures(): Promise<void> { await setMeta('sync_failures', {}); }
 
 async function ack(table: TableName, pushed: Row<TableName>[]): Promise<void> {
   await db.transaction('rw', tbl(table), async () => {

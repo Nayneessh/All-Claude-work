@@ -76,10 +76,10 @@ export async function storeRecommendations(proposals: Pick<Recommendation, 'kind
   return n;
 }
 
-export async function respondToRecommendation(id: string, action: 'accepted' | 'edited' | 'dismissed' | 'deferred', opts: { deferUntil?: ISODate; note?: string } = {}): Promise<void> {
+export async function respondToRecommendation(id: string, action: 'open' | 'accepted' | 'edited' | 'dismissed' | 'deferred', opts: { deferUntil?: ISODate; note?: string } = {}): Promise<void> {
   await db.transaction('rw', tbl('recommendations'), tbl('audit_events'), async () => {
     const before = await tbl('recommendations').get(id);
-    await update('recommendations', id, { status: action, resolved_at: action === 'deferred' ? null : nowIso(), deferred_until: opts.deferUntil ?? null, response_note: opts.note ?? null });
+    await update('recommendations', id, { status: action, resolved_at: action === 'deferred' || action === 'open' ? null : nowIso(), deferred_until: opts.deferUntil ?? null, response_note: opts.note ?? null });
     await audit('recommendation', id, action, before ? { status: before.status } : null, { status: action }, opts.note ?? null);
   });
 }

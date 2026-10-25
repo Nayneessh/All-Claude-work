@@ -58,6 +58,8 @@ export async function activeSession(): Promise<WorkoutSession | undefined> {
   return rows[0] ? (clean(rows[0]) as WorkoutSession) : undefined;
 }
 
+const bySetOrder = (a: SetRecord, b: SetRecord): number => (a.set_type === 'warmup' ? 0 : 1) - (b.set_type === 'warmup' ? 0 : 1) || a.set_number - b.set_number || (a.created_at < b.created_at ? -1 : a.created_at > b.created_at ? 1 : 0);
+
 export interface SessionExerciseView { se: SessionExercise; exercise: Exercise; sets: SetRecord[] }
 
 export async function sessionExercises(sessionId: string): Promise<SessionExerciseView[]> {
@@ -68,7 +70,7 @@ export async function sessionExercises(sessionId: string): Promise<SessionExerci
   return ses.map((se) => ({
     se: clean(se) as SessionExercise,
     exercise: exs.get(se.exercise_id) as Exercise,
-    sets: sets.filter((s) => s.session_exercise_id === se.id).sort((a, b) => a.set_number - b.set_number || (a.created_at < b.created_at ? -1 : 1)),
+    sets: sets.filter((s) => s.session_exercise_id === se.id).sort(bySetOrder),
   }));
 }
 
@@ -400,7 +402,7 @@ export async function addSet(seId: string, type: SetType = 'working', template?:
   return db.transaction('rw', SESSION_TABLES(), async () => {
     const se = await tbl('session_exercises').get(seId);
     if (!se) throw new Error('Exercise not found');
-    const sets = (await tbl('set_records').where('session_exercise_id').equals(seId).toArray()).filter((s) => !s.deleted_at && !s.parent_set_id);
+    const sets = (await tbl('set_records').where('session_exercise_id').equals(seId).toArray()).filter((s) => !s.deleted_at && !s.parent_set_id && (type === 'warmup') === (s.set_type === 'warmup'));
     const last = [...sets].sort((a, b) => a.set_number - b.set_number).at(-1);
     const session = (await getSession(se.session_id)) as WorkoutSession;
     const row = await insert('set_records', {
@@ -413,6 +415,13 @@ export async function addSet(seId: string, type: SetType = 'working', template?:
     await recomputeExerciseStatus(seId);
     if (FINISHED.has(session.status)) await markCorrection(session.id, 'set', row.id, 'add', null, { set_number: row.set_number });
     return clean(row) as SetRecord;
+  });
+}
+
+/** Adds a warm-up ramp (separate numbering, never counted as working volume). */
+export async function addWarmupSets(seId: string, steps: { weight_kg: number; reps: number }[]): Promise<void> {
+  await db.transaction('rw', SESSION_TABLES(), async () => {
+    for (const st of steps) await addSet(seId, 'warmup', { planned_weight_kg: st.weight_kg, planned_reps_min: st.reps, planned_reps_max: st.reps, planned_rir: null });
   });
 }
 
@@ -640,3 +649,28 @@ export async function changeSessionDate(id: string, date: ISODate, reason?: stri
 }
 
 export const isLikelySameDay = (a: ISODate, b: ISODate): boolean => a === b;
+
+/** "Remove" a workout from history without destroying it: soft-deleted with all its records, restorable, audited. */
+export async function archiveSession(id: string, reason?: string): Promise<void> {
+  await db.transaction('rw', SESSION_TABLES(), async () => {
+    const s = await tbl('workout_sessions').get(id);
+    if (!s || s.deleted_at) return;
+    const t = nowIso();
+    for (const v of await tbl('set_records').where('session_id').equals(id).toArray()) if (!v.deleted_at) await update('set_records', v.id, { deleted_at: t });
+    for (const v of await tbl('session_exercises').where('session_id').equals(id).toArray()) if (!v.deleted_at) await update('session_exercises', v.id, { deleted_at: t });
+    await update('workout_sessions', id, { deleted_at: t, dedupe_key: null });
+    await audit('session', id, 'archive', { status: s.status }, { deleted_at: t }, reason ?? null);
+  });
+}
+
+export async function restoreArchivedSession(id: string): Promise<void> {
+  await db.transaction('rw', SESSION_TABLES(), async () => {
+    const s = await tbl('workout_sessions').get(id);
+    if (!s || !s.deleted_at) return;
+    const at = s.deleted_at;
+    for (const v of await tbl('set_records').where('session_id').equals(id).toArray()) if (v.deleted_at === at) await update('set_records', v.id, { deleted_at: null });
+    for (const v of await tbl('session_exercises').where('session_id').equals(id).toArray()) if (v.deleted_at === at) await update('session_exercises', v.id, { deleted_at: null });
+    await update('workout_sessions', id, { deleted_at: null, dedupe_key: s.template_key && s.scheduled_date ? schedKey(s.template_key, s.scheduled_date) : null });
+    await audit('session', id, 'restore_archived', null, { restored: true });
+  });
+}

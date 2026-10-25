@@ -33,7 +33,6 @@ interface S {
 const COMPOUND = 'compound';
 const ISO = 'isolation';
 
-/* eslint-disable max-len */
 export const SEED: S[] = [
   // ── Back ──────────────────────────────────────────────────────────────────
   { key: 'underhand-lat-pulldown', name: 'Underhand Lat Pulldown', cat: COMPOUND, p: ['lats'], s: ['biceps_short', 'upper_back'], mp: 'pull', eq: 'cable', res: 'cable', cues: 'Elbows to hips. Chest up, slight lean back, pull to the upper chest.', tech: 'Sit with thighs locked under the pad. Underhand shoulder-width grip. Drive the elbows down and back; control the way up to a full stretch.', rest: 120, diff: 1, sub: ['lat-pulldown-wide', 'neutral-grip-pulldown', 'chin-up'] },
@@ -156,7 +155,6 @@ export const SEED: S[] = [
   { key: 'shoulder-dislocates', name: 'Band Shoulder Dislocates', cat: 'mobility', p: [], mp: 'other', eq: 'band', res: 'band', tm: 'duration', lm: 'bodyweight', diff: 1 },
   { key: 'cat-cow', name: 'Cat-Cow', cat: 'mobility', p: [], mp: 'other', eq: 'bodyweight', res: 'none', tm: 'duration', lm: 'bodyweight', diff: 1 },
 ];
-/* eslint-enable max-len */
 
 export function toExerciseRow(s: S): Exercise {
   const t = '2026-01-01T00:00:00.000Z';
