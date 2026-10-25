@@ -75,7 +75,7 @@ Sync engine against the real schema (6): full logged workout accepted by every r
 
 ### Android runtime (GitHub Actions emulator, Android 14 / API 34) — see ANDROID_RELEASE.md for the full log
 
-The **signed release APK** installed on a fresh emulator, launched without a crash and relaunched after a force-stop (CI runs 1 and 3). The debuggable twin of the same bundle was driven inside Android's real WebView: first launch → set logged → app process killed → relaunch → the logged set (reps = 10) still there (CI run 3, passed). One later re-run (CI run 4) failed in my first-generation release smoke heuristic (text-matching a `uiautomator` dump); a sturdier check is written but not pushed — details and honesty notes in ANDROID_RELEASE.md. Static APK checks (signature v2, signer fingerprint = published, zipalign, aapt2 metadata) passed in run 4.
+The **signed release APK** installed on a fresh emulator, reached the foreground without a crash and came back after a force-stop (CI runs 1, 3, 5). The debuggable twin of the same bundle was driven inside Android's real WebView: first launch → set logged → app process killed → relaunch → the logged set (reps = 10) still there (CI runs 3 and 5, passed). Run 4 failed in my first-generation release smoke heuristic (text-matching a `uiautomator` dump — timing-sensitive); it was replaced and run 5 passed on the new check. Static APK checks (signature v2, signer fingerprint = published, zipalign, aapt2 metadata) passed in runs 4 and 5.
 
 ### Performance (measured)
 
