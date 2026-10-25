@@ -42,3 +42,18 @@ test('Performance — cold start to interactive, and a set is logged within budg
   expect(logMs).toBeLessThan(1000);
   expect(w.errors).toEqual([]);
 });
+
+test('Add activity — MMA is logged as its own session and the strength day stays planned', async ({ page }) => {
+  const w = watch(page);
+  await freshStart(page);
+  await page.getByRole('button', { name: 'Add activity' }).click();
+  await page.getByRole('button', { name: 'MMA Training' }).click();
+  await page.getByLabel('Minutes').fill('45');
+  await page.getByRole('button', { name: '7', exact: true }).click();
+  await page.getByRole('button', { name: 'Save activity' }).click();
+  await expect(page.getByText('MMA Training logged')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Start workout/ }).first()).toBeVisible(); // Monday strength still planned
+  await gotoTab(page, 'History');
+  await expect(page.getByText('MMA Training').first()).toBeVisible();
+  expect(w.errors).toEqual([]);
+});

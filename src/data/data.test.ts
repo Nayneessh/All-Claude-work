@@ -277,6 +277,34 @@ describe('workout sessions', () => {
   });
 });
 
+describe('add activity (cardio / sport / mobility)', () => {
+  beforeEach(async () => { await setup(); });
+  it('logs MMA as its own finished session without touching the program or adding strength volume', async () => {
+    const before = (await tbl('workout_sessions').toArray()).length;
+    const s = await S.logActivity({ exerciseId: exId('mma-training'), date: TODAY, durationMin: 45, rpe: 7, notes: 'Sparring' }, TODAY);
+    expect(s).toMatchObject({ name: 'MMA Training', workout_type: 'sport', program_id: null, session_rpe: 7, notes: 'Sparring' });
+    expect(['completed_as_planned', 'completed_modified']).toContain(s.status);
+    expect(Date.parse(s.finished_at!) - Date.parse(s.started_at!)).toBe(45 * 60_000);
+    const sets = await tbl('set_records').where('session_id').equals(s.id).toArray();
+    expect(sets).toHaveLength(1);
+    expect(sets[0]).toMatchObject({ duration_s: 2700, weight_kg: null, reps: null, status: 'completed' });
+    expect((await tbl('workout_sessions').toArray()).length).toBe(before + 1);
+    // today's planned strength day is still planned, not consumed
+    expect((await S.planForDate(TODAY))[0]!.session?.status ?? 'planned').toBe('planned');
+    const data = await loadAnalytics('2026-10-01', TODAY, TODAY);
+    expect(periodStats(data.sets as never, data.ctx).volumeKg).toBe(0);
+  });
+  it('records distance for a run and validates inputs', async () => {
+    const s = await S.logActivity({ exerciseId: exId('rowing-machine'), date: '2026-10-24', durationMin: 20, distanceKm: 4.2 }, TODAY);
+    const [set] = await tbl('set_records').where('session_id').equals(s.id).toArray();
+    expect(set).toMatchObject({ duration_s: 1200, distance_m: 4200 });
+    expect(s.workout_type).toBe('cardio');
+    await expect(S.logActivity({ exerciseId: exId('mma-training'), date: TODAY, durationMin: 0 }, TODAY)).rejects.toThrow(/duration/i);
+    await expect(S.logActivity({ exerciseId: exId('mma-training'), date: '2026-10-27', durationMin: 30 }, TODAY)).rejects.toThrow(/future/);
+    await expect(S.logActivity({ exerciseId: 'nope', date: TODAY, durationMin: 30 }, TODAY)).rejects.toThrow(/not found/);
+  });
+});
+
 describe('skipping, rescheduling and attendance', () => {
   beforeEach(async () => { await setup(); });
   it('a skipped workout stays visible and is not a zero-performance session', async () => {

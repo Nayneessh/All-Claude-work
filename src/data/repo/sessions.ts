@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import type { Exercise, ISODate, PlannedExercise, PlannedFields, PlannedSnapshot, Program, ProgramVersion, SessionExercise, SessionStatus, SetRecord, SetType, WorkoutSession, WorkoutTemplate } from '@/domain/types';
+import type { Exercise, ExerciseCategory, ISODate, PlannedExercise, PlannedFields, PlannedSnapshot, Program, ProgramVersion, SessionExercise, SessionStatus, SetRecord, SetType, WorkoutSession, WorkoutTemplate, WorkoutType } from '@/domain/types';
 import type { PlanTree } from '@/domain/editScope';
 import { classifyCompletion, assertTransition, FINISHED, type SlotInput } from '@/domain/sessionState';
 import { templatesOnDate } from '@/domain/versioning';
@@ -197,6 +197,32 @@ async function retargetSetDates(sessionId: string, date: ISODate): Promise<void>
 /** Unplanned session ("add an unplanned session"). The program is untouched. */
 export async function startAdhoc(name: string, today: ISODate = todayISO()): Promise<WorkoutSession> {
   return db.transaction('rw', SESSION_TABLES(), () => createSession({ program: null, versionId: null, template: null, scheduledDate: null, sessionDate: today, status: 'in_progress', name: name.trim() || 'Workout', dedupeKey: null, rows: [] }));
+}
+
+export interface ActivityInput { exerciseId: string; date: ISODate; durationMin: number; distanceKm?: number | null; rpe?: number | null; notes?: string | null }
+const ACTIVITY_TYPE: Partial<Record<ExerciseCategory, WorkoutType>> = { cardio: 'cardio', conditioning: 'cardio', sport: 'sport', mobility: 'mobility', stretching: 'mobility' };
+
+/**
+ * "Add activity": a finished, single-exercise session for cardio / sport / mobility (MMA, a run, a stretch routine) logged in one step.
+ * It is its own session — the strength program is untouched — and it carries duration/distance only, so it adds no phantom strength volume.
+ */
+export async function logActivity(input: ActivityInput, today: ISODate = todayISO()): Promise<WorkoutSession> {
+  if (!(input.durationMin >= 1) || input.durationMin > 1440) throw new Error('Enter a duration between 1 minute and 24 hours.');
+  if (input.distanceKm != null && (input.distanceKm < 0 || input.distanceKm > 1000)) throw new Error('Distance must be between 0 and 1,000 km.');
+  if (input.date > today) throw new Error('An activity cannot be dated in the future.');
+  return db.transaction('rw', SESSION_TABLES(), async () => {
+    const ex = await tbl('exercises').get(input.exerciseId);
+    if (!ex || ex.deleted_at) throw new Error('Activity not found.');
+    const created = await startAdhoc(ex.name, input.date);
+    const se = await addExerciseToSession(created.id, ex.id, 1);
+    const set = (await tbl('set_records').where('session_exercise_id').equals(se.id).toArray()).find((r) => !r.deleted_at);
+    if (!set) throw new Error('Could not create the activity entry.');
+    await logSet(set.id, { duration_s: Math.round(input.durationMin * 60), distance_m: input.distanceKm == null ? null : Math.round(input.distanceKm * 1000), rpe: input.rpe ?? null });
+    const done = await finishSession(created.id, { session_rpe: input.rpe ?? null, notes: input.notes?.trim() || null });
+    const end = input.date === today ? Date.parse(done.finished_at ?? nowIso()) : Date.parse(`${input.date}T12:00:00`) + input.durationMin * 60_000;
+    await update('workout_sessions', created.id, { workout_type: ACTIVITY_TYPE[ex.category] ?? 'mixed', finished_at: new Date(end).toISOString(), started_at: new Date(end - input.durationMin * 60_000).toISOString() });
+    return (await getSession(created.id)) as WorkoutSession;
+  });
 }
 
 /** Copy a past workout into today. Loads/reps from the source become the new targets; nothing is pre-logged. */

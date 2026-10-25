@@ -16,6 +16,7 @@ import { sessionTimes, FINISHED } from '@/domain/sessionState';
 import { muscleLabel } from '@/domain/muscles';
 import { exerciseMap } from '@/data/repo/exercises';
 import { SyncChip } from '@/ui/SyncChip';
+import { ActivitySheet } from './shared/ActivitySheet';
 
 const SKIP_REASONS = ['Sick', 'Injury', 'Travel', 'No time', 'Recovery', 'Other'];
 
@@ -37,6 +38,7 @@ export function Today() {
   const [moveFor, setMoveFor] = useState<DayItem | null>(null);
   const [moveDate, setMoveDate] = useState(addDays(today, 1));
   const [anyOpen, setAnyOpen] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
   async function start(item: DayItem): Promise<void> {
@@ -136,6 +138,7 @@ export function Today() {
       <Section title="Quick actions">
         <div className="chips wrap">
           <Chip onClick={() => void quick()}><Icon name="plus" size={16} /> Quick workout</Chip>
+          <Chip onClick={() => setActivityOpen(true)}><Icon name="timer" size={16} /> Add activity</Chip>
           <Chip onClick={() => nav('/recovery')}><Icon name="moon" size={16} /> {ready.data ? 'Update readiness' : 'Check in'}</Chip>
           <Chip onClick={() => nav('/body')}><Icon name="scale" size={16} /> Bodyweight</Chip>
           <Chip onClick={() => nav('/search')}><Icon name="search" size={16} /> Search</Chip>
@@ -158,6 +161,7 @@ export function Today() {
         <label className="label" htmlFor="move-date">New date</label>
         <input id="move-date" className="input" type="date" value={moveDate} min={addDays(today, -7)} onChange={(e) => setMoveDate(e.target.value)} />
       </Sheet>
+      <ActivitySheet open={activityOpen} onClose={() => setActivityOpen(false)} today={today} />
       <Sheet open={anyOpen} onClose={() => setAnyOpen(false)} title="Train a program day">
         <div className="list">{bundles.data?.flatMap((b) => b.templates.filter((t) => t.program_version_id === b.versions[b.versions.length - 1]?.id).map((t) => (
           <button key={t.id} className="item" type="button" onClick={async () => { const s = await startScheduled(b.program.id, t.template_key, today, today); setAnyOpen(false); nav(`/workout/${s.id}`); }}>
