@@ -7,6 +7,8 @@ export interface ManagerDeps {
   online: () => boolean;
   schedule: (fn: () => void, ms: number) => () => void;
   disabled?: boolean;
+  /** Runs after a cycle that finished without error (e.g. upload photos that were taken offline). Failures here never fail the sync. */
+  afterSync?: () => Promise<void>;
 }
 
 /**
@@ -47,6 +49,7 @@ export function createSyncManager(deps: ManagerDeps) {
         arm(Math.min(300_000, 5_000 * 2 ** (attempt - 1)));
       } else {
         attempt = 0;
+        try { await deps.afterSync?.(); } catch { /* optional extras (photos) retry on the next cycle */ }
         await emit('idle', null);
       }
     } finally {

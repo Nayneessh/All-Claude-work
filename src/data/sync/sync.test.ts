@@ -304,4 +304,18 @@ describe('sync manager', () => {
     expect(snap.status).toBe('idle');
     expect(snap.pending).toBe(0);
   });
+
+  it('runs the after-sync hook (photo upload) only after an error-free cycle, and a failing hook never fails the sync', async () => {
+    const server = await fresh();
+    await startMonday();
+    let calls = 0;
+    const timers: { fn: () => void; ms: number }[] = [];
+    const mgr = createSyncManager({ remote: () => server.remote(), online: () => true, schedule: (fn, ms) => { timers.push({ fn, ms }); return () => undefined; }, afterSync: async () => { calls++; throw new Error('storage unavailable'); } });
+    server.offline = true;
+    expect((await mgr.syncNow()).status).toBe('error');
+    expect(calls).toBe(0);
+    server.offline = false;
+    expect((await mgr.syncNow()).status).toBe('idle');
+    expect(calls).toBe(1);
+  });
 });

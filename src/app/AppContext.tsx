@@ -58,6 +58,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       online: () => onlineRef.current,
       schedule: (fn, ms) => { const t = window.setTimeout(fn, ms); return () => window.clearTimeout(t); },
       disabled: !cloudConfigured,
+      afterSync: async () => { const c = getClient(); if (c) await (await import('@/data/repo/photos')).uploadPendingPhotos(c); },
     });
   }
   const mgr = mgrRef.current;
