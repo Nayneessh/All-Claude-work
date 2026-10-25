@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Monster Gains</string>
+    <string name="title_activity_main">Monster Gains</string>
+    <string name="package_name">com.monstergains.app</string>
+    <string name="custom_url_scheme">com.monstergains.app</string>
+</resources>

@@ -1,0 +1,70 @@
+name: Android build
+
+on:
+  push:
+    branches: ['**']
+    paths-ignore: ['docs/**', '*.md']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - name: Build web bundle
+        run: npm run build
+      - name: Sync Capacitor
+        run: npx cap sync android
+      - name: Assemble release + debug APKs
+        working-directory: android
+        env:
+          MG_KEYSTORE_PATH: ${{ secrets.ANDROID_KEYSTORE_BASE64 && '/tmp/mg.keystore' || '' }}
+          MG_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          MG_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          MG_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KS_B64" ]; then echo "$KS_B64" | base64 -d > /tmp/mg.keystore; fi
+          VN=$(node -p "require('../package.json').version")
+          ./gradlew --no-daemon assembleRelease assembleDebug -PmgVersionName="$VN" -PmgVersionCode="${{ github.run_number }}"
+      - name: Collect outputs
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/*.apk out/ || true
+          cp android/app/build/outputs/apk/debug/*.apk out/ || true
+          ls -la out
+          $ANDROID_HOME/build-tools/*/aapt2 dump badging out/app-release*.apk | head -8 || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: monster-gains-apks
+          path: out/*.apk
+          retention-days: 30
+      - name: Publish build output to ci-artifacts branch
+        if: github.ref_name != 'ci-artifacts'
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          rm -rf /tmp/pub && mkdir /tmp/pub && cp out/*.apk /tmp/pub/
+          echo "${{ github.sha }}" > /tmp/pub/SOURCE_SHA
+          git checkout --orphan ci-artifacts-tmp
+          git rm -rf . > /dev/null 2>&1 || true
+          cp /tmp/pub/* .
+          git add -A
+          git commit -m "CI build of ${{ github.sha }} (run ${{ github.run_number }})"
+          git push -f origin HEAD:refs/heads/ci-artifacts
