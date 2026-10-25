@@ -1,1 +1,1 @@
-export {};
+import 'fake-indexeddb/auto';
