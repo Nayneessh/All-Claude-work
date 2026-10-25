@@ -1,5 +1,9 @@
 apply plugin: 'com.android.application'
 
+// Version is injected by CI (-PmgVersionName / -PmgVersionCode); see docs/ANDROID_RELEASE.md
+def mgVersionCode = Integer.parseInt((project.findProperty('mgVersionCode') ?: '1').toString())
+def mgVersionName = (project.findProperty('mgVersionName') ?: '1.0.0').toString()
+
 android {
     namespace = "com.monstergains.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +11,8 @@ android {
         applicationId "com.monstergains.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode (project.findProperty('mgVersionCode') ?: '1').toInteger()
-        versionName (project.findProperty('mgVersionName') ?: '1.0.0')
+        versionCode mgVersionCode
+        versionName mgVersionName
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
