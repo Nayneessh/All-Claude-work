@@ -7,6 +7,7 @@ import type { ISOTime, SessionStatus, WorkoutSession } from './types';
  *  planned ─┬─> in_progress ─┬─> completed_as_planned
  *           │                ├─> completed_modified
  *           │                ├─> partial
+ *           │                ├─> skipped   (started, nothing logged — never a zero-volume session)
  *           │                └─> cancelled
  *           ├─> skipped
  *           ├─> rescheduled
@@ -20,7 +21,7 @@ export const ABSENT: ReadonlySet<SessionStatus> = new Set(['skipped', 'cancelled
 
 const TRANSITIONS: Record<SessionStatus, SessionStatus[]> = {
   planned: ['in_progress', 'skipped', 'rescheduled', 'cancelled'],
-  in_progress: ['completed_as_planned', 'completed_modified', 'partial', 'cancelled'],
+  in_progress: ['completed_as_planned', 'completed_modified', 'partial', 'skipped', 'cancelled'],
   completed_as_planned: ['in_progress'],
   completed_modified: ['in_progress'],
   partial: ['in_progress'],

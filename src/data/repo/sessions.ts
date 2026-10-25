@@ -274,6 +274,10 @@ export async function skipScheduled(programId: string, templateKey: string, date
       s = await createSession({ program: bundle.program, versionId: tpl.program_version_id, template: tpl, scheduledDate: date, sessionDate: date, status: 'planned', name: tpl.name, dedupeKey: schedKey(templateKey, date), rows: [] });
     }
     assertTransition(s.status, 'skipped');
+    if (s.status === 'in_progress') {
+      const logged = (await tbl('set_records').where('session_id').equals(s.id).toArray()).some((r) => !r.deleted_at && r.status === 'completed');
+      if (logged) throw new Error('This workout already has logged sets — finish it instead of skipping.');
+    }
     await update('workout_sessions', s.id, { status: 'skipped', skip_reason: reason });
     await audit('session', s.id, 'skip', { status: s.status }, { status: 'skipped' }, reason);
     return (await getSession(s.id)) as WorkoutSession;

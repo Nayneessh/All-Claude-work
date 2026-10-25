@@ -7,6 +7,7 @@ describe('session state machine', () => {
     expect(canTransition('in_progress', 'completed_as_planned')).toBe(true);
     expect(canTransition('completed_as_planned', 'in_progress')).toBe(true); // reopen to correct
     expect(canTransition('skipped', 'planned')).toBe(true);
+    expect(canTransition('in_progress', 'skipped')).toBe(true); // started, nothing logged
     expect(canTransition('planned', 'completed_as_planned')).toBe(false);
     expect(canTransition('skipped', 'completed_as_planned')).toBe(false);
     expect(() => assertTransition('cancelled', 'in_progress')).toThrow(/Invalid session transition/);

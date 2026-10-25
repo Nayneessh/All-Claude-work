@@ -197,7 +197,7 @@ export function Workout() {
         const scheduled = !!s?.template_key && !!s.program_id;
         const skip = await ui.confirm({ title: 'No sets logged yet', message: scheduled ? 'Do you want to mark this workout as skipped? It stays in your history, and nothing is counted as zero.' : 'There is nothing to save. Discard this workout?', confirmLabel: scheduled ? 'Mark as skipped' : 'Discard', cancelLabel: 'Keep training', danger: !scheduled });
         if (!skip) return;
-        if (scheduled && s?.program_id && s.template_key) { await discardSession(id); await skipScheduled(s.program_id, s.template_key, s.scheduled_date ?? s.session_date, 'No sets logged'); } else await discardSession(id);
+        if (scheduled && s?.program_id && s.template_key) await skipScheduled(s.program_id, s.template_key, s.scheduled_date ?? s.session_date, 'No sets logged'); else await discardSession(id);
         nav('/', { replace: true });
         return;
       }
@@ -317,7 +317,9 @@ function SetRow({ set, cols, unit, prev, next, comp, label, rpeMode, onDetail, o
   const [x, setX] = useState(set.rir === null && rpeMode !== 'rpe' ? '' : String((rpeMode === 'rpe' ? set.rpe : set.rir) ?? ''));
   const timer = useRef<number | undefined>(undefined);
   // keep inputs in sync when the stored set changes underneath (undo, sync, correction)
-  useEffect(() => { setA(toA(cols.aField ? (set[cols.aField] as number | null) : null, cols.aKind, unit)); setB(toB(set[cols.bField] as number | null, cols.bKind)); setX(String((rpeMode === 'rpe' ? set.rpe : set.rir) ?? '')); // eslint-disable-next-line react-hooks/exhaustive-deps
+  const rowRef = useRef<HTMLDivElement | null>(null);
+  const lastStatus = useRef(set.status);
+  useEffect(() => { const statusChanged = lastStatus.current !== set.status; lastStatus.current = set.status; if (!statusChanged && rowRef.current?.contains(document.activeElement)) return; /* never overwrite what the user is typing */ setA(toA(cols.aField ? (set[cols.aField] as number | null) : null, cols.aKind, unit)); setB(toB(set[cols.bField] as number | null, cols.bKind)); setX(String((rpeMode === 'rpe' ? set.rpe : set.rir) ?? '')); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [set.id, set.status, set.client_updated_at, unit]);
 
   const phA = cols.aKind === 'weight' ? (set.planned_weight_kg ?? prev?.weight_kg ?? null) : null;
@@ -332,7 +334,14 @@ function SetRow({ set, cols, unit, prev, next, comp, label, rpeMode, onDetail, o
     if (rpeMode !== 'none') { const n = parseNumber(x); if (rpeMode === 'rpe') patch.rpe = n; else patch.rir = n; }
     return patch;
   };
-  const draft = (): void => { window.clearTimeout(timer.current); timer.current = window.setTimeout(() => { if (!completed) void editSet(set.id, buildPatch()).catch(() => undefined); }, 450); };
+  // The debounced save must read the *latest* typed values (not the render that scheduled it) and must not be lost on blur/unmount.
+  const latest = useRef({ build: buildPatch, completed });
+  latest.current = { build: buildPatch, completed };
+  const pending = useRef(false);
+  const saveDraft = (): void => { window.clearTimeout(timer.current); if (!pending.current) return; pending.current = false; if (!latest.current.completed) void editSet(set.id, latest.current.build()).catch(() => undefined); };
+  const draft = (): void => { pending.current = true; window.clearTimeout(timer.current); timer.current = window.setTimeout(saveDraft, 450); };
+  const flush = useRef(saveDraft); flush.current = saveDraft;
+  useEffect(() => () => flush.current(), []);
 
   async function toggle(): Promise<void> {
     try {
@@ -350,12 +359,12 @@ function SetRow({ set, cols, unit, prev, next, comp, label, rpeMode, onDetail, o
       onLogged(saved);
     } catch (e) { ui.toast(errMsg(e), { tone: 'err' }); }
   }
-  const blur = (): void => { if (completed) { const patch = buildPatch(); const changed = Object.entries(patch).some(([k, val]) => (set as unknown as Record<string, unknown>)[k] !== val); if (changed) void editSet(set.id, patch).catch((e) => ui.toast(errMsg(e), { tone: 'err' })); } };
+  const blur = (): void => { if (!completed) { saveDraft(); return; } if (completed) { const patch = buildPatch(); const changed = Object.entries(patch).some(([k, val]) => (set as unknown as Record<string, unknown>)[k] !== val); if (changed) void editSet(set.id, patch).catch((e) => ui.toast(errMsg(e), { tone: 'err' })); } };
   const aria = (f: Field): string => `Set ${label} ${f === 'weight' ? cols.aLabel ?? '' : cols.bLabel}`;
   const hasA = cols.aField !== null;
 
   return (
-    <div className={`set-r${comp ? ' comp' : ''}${next ? ' next' : ''}${completed ? ' done' : ''}${skipped ? ' skipped' : ''}`} data-testid={`set-${set.id}`}>
+    <div ref={rowRef} className={`set-r${comp ? ' comp' : ''}${next ? ' next' : ''}${completed ? ' done' : ''}${skipped ? ' skipped' : ''}`} data-testid={`set-${set.id}`}>
       <button type="button" className="n" style={{ background: 'none', border: 0 }} onClick={onDetail} aria-label={`Set ${label} details`}>{label}</button>
       <span className="prev num">{comp ? <span className="tiny dim">linked</span> : prevText}</span>
       {hasA ? <input inputMode="decimal" aria-label={aria('weight')} placeholder={phAText} value={a} onChange={(e) => { setA(e.target.value); draft(); }} onBlur={blur} /> : <span />}
