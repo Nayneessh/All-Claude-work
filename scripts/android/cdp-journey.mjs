@@ -27,14 +27,18 @@ await device.screenshot({ path: `${OUT}/02-webview-onboarding.png` });
 await page.getByRole('button', { name: 'Next' }).click();
 await page.getByRole('button', { name: 'Next' }).click();
 await page.getByRole('button', { name: 'Start training' }).click();
-await page.getByRole('button', { name: /Start workout|Resume/ }).first().waitFor({ timeout: 20_000 });
+// A quick (unplanned) workout works on any weekday/date, so this check does not depend on the routine's schedule.
+await page.getByRole('button', { name: 'Quick workout' }).first().waitFor({ timeout: 20_000 });
 await device.screenshot({ path: `${OUT}/03-webview-today.png` });
-await page.getByRole('button', { name: /Start workout/ }).first().click();
-await page.getByLabel('Set 1 Reps').first().waitFor({ timeout: 20_000 });
+await page.getByRole('button', { name: 'Quick workout' }).first().click();
+await page.getByRole('button', { name: 'Add exercise' }).first().click();
+await page.getByLabel('Search exercises').fill('bench');
+await page.locator('button.item').first().click();
+await page.getByText('0/3 sets').waitFor({ timeout: 20_000 });
 await page.getByLabel('Set 1 Reps').first().fill('10');
 await page.getByRole('button', { name: 'Complete set 1' }).first().click();
-await page.getByText('1/9 sets').waitFor({ timeout: 10_000 });
-check(true, 'a set was logged ("1/9 sets") in the real WebView');
+await page.getByText('1/3 sets').waitFor({ timeout: 10_000 });
+check(true, 'a set was logged ("1/3 sets") in the real WebView');
 await device.screenshot({ path: `${OUT}/04-webview-logged.png` });
 await sleep(1500); // let the local database flush
 
@@ -42,9 +46,9 @@ console.log('-- killing the app process, as Android may at any time');
 await device.shell(`am force-stop ${PKG}`);
 await sleep(2000);
 page = await launch();
-await page.getByText('1/9 sets').or(page.getByRole('button', { name: /Resume/ }).first()).first().waitFor({ timeout: 30_000 });
+await page.getByText('1/3 sets').or(page.getByRole('button', { name: /Resume/ }).first()).first().waitFor({ timeout: 30_000 });
 if (!/workout/.test(page.url())) await page.getByRole('button', { name: /Resume/ }).first().click();
-await page.getByText('1/9 sets').waitFor({ timeout: 15_000 });
+await page.getByText('1/3 sets').waitFor({ timeout: 15_000 });
 check(true, 'after the process was killed and relaunched, the logged set is still there');
 await device.screenshot({ path: `${OUT}/05-webview-after-restart.png` });
 const reps = await page.getByLabel('Set 1 Reps').first().inputValue();
