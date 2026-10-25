@@ -8,7 +8,7 @@ Built from the product blueprint *Fitness App — Product Blueprint & Requiremen
 
 ## Install (Android 7.0+)
 
-1. Download the signed APK from the **Releases** page of this repository (`MonsterGains-<version>.apk`) — see [docs/ANDROID_RELEASE.md](docs/ANDROID_RELEASE.md) for the exact link, checksum and the signing-certificate fingerprint to compare.
+1. Download the signed APK: **https://github.com/Nayneessh/All-Claude-work/raw/release/MonsterGains-1.0.0.apk** — checksum and signing-certificate fingerprint to compare are in [docs/ANDROID_RELEASE.md](docs/ANDROID_RELEASE.md).
 2. Open the file on the phone and allow *Install unknown apps* for your browser/file manager when asked.
 3. First launch: three short screens → **Start training**. The v6 routine is already loaded. No account is required; sign in later to back up and sync.
 
@@ -37,7 +37,7 @@ React 19 · TypeScript (strict) · Vite 7 · **Capacitor 8** (Android) · **Dexi
 npm ci
 npm run dev          # web dev server
 npm run typecheck && npm run lint
-npm test             # 222 unit/integration tests incl. real-Postgres RLS + sync tests (PGlite)
+npm test             # 234 unit/integration tests incl. real-Postgres RLS + sync tests (PGlite)
 npm run test:e2e     # 20 Playwright journeys on a Pixel 7 profile (builds + serves the app)
 npm run build        # production web bundle -> dist/
 npx cap sync android # copy the bundle into the Android project
