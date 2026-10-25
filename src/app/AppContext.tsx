@@ -15,7 +15,10 @@ import type { Remote, SyncSnapshot } from '@/data/sync/types';
 import { maybeDailySnapshot } from '@/data/backup';
 import { getClient, cloudConfigured } from '@/services/supabase';
 import { type AuthState, initAuth, initialAuth, signOut as authSignOut } from '@/services/auth';
-import { hideSplash, isOnline, isNative, setStatusBar, watchApp, watchNetwork } from '@/services/platform';
+import { hideSplash, isOnline, isNative, setStatusBar, setupNotificationActions, watchApp, watchNetwork } from '@/services/platform';
+import { refreshReminders } from '@/services/reminders';
+import { planForDate } from '@/data/repo/sessions';
+import { useLive } from './hooks';
 
 export interface AppCtx {
   ready: boolean;
@@ -126,6 +129,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const periodic = window.setInterval(() => void mgr.syncNow(), 120_000);
     return () => { offNet?.(); offApp?.(); window.clearInterval(clock); window.clearInterval(periodic); sub.unsubscribe(); mgr.stop(); };
   }, [mgr]);
+
+  // ── reminders: snooze action + keep every reminder consistent with what has been done today ──────────
+  const settingsNow = effectiveSettings(profile);
+  const snoozeRef = useRef(30);
+  snoozeRef.current = settingsNow.reminders?.snooze_min ?? 30;
+  useEffect(() => { let off: (() => void) | undefined; void setupNotificationActions(() => snoozeRef.current).then((f) => { off = f; }); return () => off?.(); }, []);
+  const doneToday = useLive(async () => (await planForDate(today)).some((i) => i.session && ['completed_as_planned', 'completed_modified', 'partial'].includes(i.session.status)), [today]);
+  const remindersKey = JSON.stringify(settingsNow.reminders ?? null);
+  useEffect(() => {
+    if (!ready || doneToday.data === undefined) return;
+    void refreshReminders(settingsNow.reminders, today, doneToday.data).catch(() => undefined); // best effort: reminders must never break the app
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, today, doneToday.data, remindersKey]);
 
   // reflect text scale
   useEffect(() => {

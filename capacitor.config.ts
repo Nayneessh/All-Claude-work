@@ -9,6 +9,7 @@ const config: CapacitorConfig = {
   plugins: {
     SplashScreen: { launchShowDuration: 900, backgroundColor: '#071F16', showSpinner: false, launchAutoHide: true },
     Keyboard: { resize: 'body', resizeOnFullScreen: true },
+    LocalNotifications: { smallIcon: 'ic_stat_name', iconColor: '#D4AF37' },
     StatusBar: { style: 'DARK', backgroundColor: '#071F16', overlaysWebView: false },
   },
 };

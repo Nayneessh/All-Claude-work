@@ -1,9 +1,10 @@
 import type { AppSettings } from '@/domain/types';
 import { addDays, isoWeekday } from '@/domain/periods';
+import { activePrograms } from '@/data/repo/programs';
 import { cancelNotifications, isNative, requestNotificationPermission, scheduleNotification } from './platform';
 
 /**
- * Local reminders (no server involved). All are configurable, snoozable and disableable:
+ * Local reminders (no server involved). All are configurable and disableable; reminders have a Snooze action (see platform.setupNotificationActions):
  *  - weekly workout reminder on chosen weekdays
  *  - "not logged yet" prompt on scheduled training days (cancelled automatically once you train)
  *  - weekly summary on Sunday evening
@@ -32,6 +33,15 @@ export async function applyReminders(cfg: AppSettings['reminders'] | undefined, 
     }
   }
   if (c.weekly_summary) await scheduleNotification(SUMMARY_ID, 'Your week in review', 'See how this week went in Progress → Reports.', new Date(), { weekday: 7, hour: 18, minute: 0 });
+}
+
+/**
+ * Recompute every reminder from the current data. Called at launch/resume, when settings change and whenever today's workout
+ * gets done — so the "workout not logged yet" prompt never fires for a workout you already did, and the next 7 days stay covered.
+ */
+export async function refreshReminders(cfg: AppSettings['reminders'] | undefined, today: string, doneToday: boolean): Promise<void> {
+  const weekdays = new Set((await activePrograms()).flatMap((b) => b.templates.map((t) => t.weekday ?? 0)));
+  await applyReminders(cfg, nextDays(today, weekdays, doneToday));
 }
 
 /** Next 7 days with a scheduled workout (used to place "not logged" prompts). */

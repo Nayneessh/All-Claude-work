@@ -98,8 +98,25 @@ export async function scheduleNotification(id: number, title: string, body: stri
   if (!isNative()) return;
   const { LocalNotifications } = await import('@capacitor/local-notifications');
   await LocalNotifications.schedule({
-    notifications: [{ id, title, body, schedule: repeatsWeekly ? { on: { weekday: ((repeatsWeekly.weekday % 7) + 1) as 1, hour: repeatsWeekly.hour, minute: repeatsWeekly.minute }, allowWhileIdle: true } : { at, allowWhileIdle: true }, smallIcon: 'ic_stat_name' }],
+    notifications: [{ id, title, body, schedule: repeatsWeekly ? { on: { weekday: ((repeatsWeekly.weekday % 7) + 1) as 1, hour: repeatsWeekly.hour, minute: repeatsWeekly.minute }, allowWhileIdle: true } : { at, allowWhileIdle: true }, smallIcon: 'ic_stat_name', actionTypeId: 'WORKOUT' }],
   });
+}
+
+const SNOOZE_NOTIFICATION_ID = 90_050;
+
+/** Adds a "Snooze" button to reminders and re-schedules the same reminder after the configured number of minutes. */
+export async function setupNotificationActions(snoozeMinutes: () => number): Promise<() => void> {
+  if (!isNative()) return () => undefined;
+  try {
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    await LocalNotifications.registerActionTypes({ types: [{ id: 'WORKOUT', actions: [{ id: 'snooze', title: 'Snooze' }] }] });
+    const handle = await LocalNotifications.addListener('localNotificationActionPerformed', (e) => {
+      if (e.actionId !== 'snooze') return;
+      const at = new Date(Date.now() + Math.max(1, snoozeMinutes()) * 60_000);
+      void LocalNotifications.schedule({ notifications: [{ id: SNOOZE_NOTIFICATION_ID, title: e.notification.title ?? 'Training', body: e.notification.body ?? '', schedule: { at, allowWhileIdle: true }, smallIcon: 'ic_stat_name', actionTypeId: 'WORKOUT' }] });
+    });
+    return () => { void handle.remove(); };
+  } catch { return () => undefined; }
 }
 
 export async function cancelNotifications(ids: number[]): Promise<void> {
