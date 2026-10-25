@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { completeAllSets, completeNextSet, finishWorkout, freshStart, gotoTab, startTodayWorkout, watch } from './helpers';
+import { completeAllSets, completeNextSet, completeSets, finishWorkout, freshStart, gotoTab, startTodayWorkout, watch } from './helpers';
 
 test('Journey 3 — perform a workout end to end and find it in History', async ({ page }) => {
   const w = watch(page);
@@ -25,8 +25,7 @@ test('Journey 3b — an interrupted workout is restored after a full reload (not
   const w = watch(page);
   await freshStart(page);
   const id = await startTodayWorkout(page);
-  await completeNextSet(page, '9');
-  await completeNextSet(page, '11');
+  await completeSets(page, 2, '9');
   await expect(page.getByText('2/9 sets')).toBeVisible();
   // simulate Android killing the WebView: hard reload on the workout URL
   await page.reload();

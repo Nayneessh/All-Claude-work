@@ -323,7 +323,7 @@ describe('skipping, rescheduling and attendance', () => {
     // restore, start again, log a set: skipping is now refused (it would hide real performance)
     await S.skipScheduled(pid, key, TODAY, null).catch(() => undefined);
     const again = await S.startScheduled(pid, key, TODAY, TODAY);
-    const set = (await tbl('set_records').where('session_id').equals(again.id).toArray()).find((r) => !r.is_warmup)!;
+    const set = (await tbl('set_records').where('session_id').equals(again.id).toArray()).find((r) => r.set_type === 'working')!;
     await S.logSet(set.id, { weight_kg: 60, reps: 8, rir: 1 });
     await expect(S.skipScheduled(pid, key, TODAY, 'oops')).rejects.toThrow(/already has logged sets/);
   });

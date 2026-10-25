@@ -103,7 +103,15 @@ export function Workout() {
   useEffect(() => { targetRef.current?.scrollIntoView?.({ block: 'center', behavior: 'smooth' }); }, [target?.setId]);
 
   const s = session.data;
-  useEffect(() => { if (s && ['completed_as_planned', 'completed_modified', 'partial'].includes(s.status)) nav(`/history/${s.id}`, { replace: true }); }, [s, nav]);
+  // Opening a finished workout's URL goes to its history page. A workout finished from *this* screen is routed by the finish
+  // sheet to its summary, so the live status update must not race it (it used to land on history about half the time).
+  const openedFinished = useRef<boolean | null>(null);
+  useEffect(() => {
+    if (!s) return;
+    const fin = ['completed_as_planned', 'completed_modified', 'partial'].includes(s.status);
+    if (openedFinished.current === null) openedFinished.current = fin;
+    if (fin && openedFinished.current) nav(`/history/${s.id}`, { replace: true });
+  }, [s, nav]);
   useEffect(() => { if (s?.status === 'planned') void import('@/data/repo/sessions').then((m) => m.startPlannedSession(s.id, app.today)); }, [s, app.today]);
 
   const afterLog = useCallback((v: SessionExerciseView, set: SetRecord, all: SessionExerciseView[]) => {

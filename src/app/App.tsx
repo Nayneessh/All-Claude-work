@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect } from 'react';
+import { ErrorBoundary } from './ErrorBoundary';
 import { HashRouter, Navigate, NavLink, Outlet, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { AppProvider, useApp } from './AppContext';
 import { UiProvider, Loading, Button, Banner } from '@/ui/kit';
@@ -39,6 +40,18 @@ const TABS: { to: string; label: string; icon: IconName }[] = [
   { to: '/', label: 'Today', icon: 'today' }, { to: '/program', label: 'Program', icon: 'program' }, { to: '/history', label: 'History', icon: 'history' },
   { to: '/progress', label: 'Progress', icon: 'chart' }, { to: '/more', label: 'More', icon: 'more' },
 ];
+/** Fetch every lazy screen once the app is idle, so the web build keeps working when the network drops mid-workout. */
+const SCREEN_LOADERS: (() => Promise<unknown>)[] = [
+  () => import('@/screens/WorkoutSummary'), () => import('@/screens/Programs'), () => import('@/screens/DayEditor'), () => import('@/screens/Exercises'),
+  () => import('@/screens/History'), () => import('@/screens/SessionDetail'), () => import('@/screens/Progress'), () => import('@/screens/Drill'),
+  () => import('@/screens/Reports'), () => import('@/screens/More'), () => import('@/screens/Recovery'), () => import('@/screens/Goals'),
+  () => import('@/screens/Settings'), () => import('@/screens/Backup'), () => import('@/screens/Search'),
+];
+function preloadScreens(): void {
+  const run = (): void => { void Promise.allSettled(SCREEN_LOADERS.map((l) => l())).then(() => { document.documentElement.dataset.screensReady = '1'; }); };
+  const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback;
+  if (ric) ric(run, { timeout: 3000 }); else window.setTimeout(run, 1500);
+}
 const ROOTS = new Set(TABS.map((t) => t.to));
 
 function Shell() {
@@ -46,7 +59,7 @@ function Shell() {
   const hideNav = /^\/workout\//.test(loc.pathname) || /^\/(auth|onboarding)/.test(loc.pathname);
   return (
     <div className="app">
-      <Suspense fallback={<div className="screen"><Loading /></div>}><Outlet /></Suspense>
+      <ErrorBoundary resetKey={loc.pathname}><Suspense fallback={<div className="screen"><Loading /></div>}><Outlet /></Suspense></ErrorBoundary>
       {!hideNav && (
         <nav className="nav" aria-label="Main">
           {TABS.map((t) => <NavLink key={t.to} to={t.to} end={t.to === '/'} className={({ isActive }) => (isActive || (t.to !== '/' && loc.pathname.startsWith(t.to)) ? 'active' : '')}><Icon name={t.icon} /><span>{t.label}</span></NavLink>)}
@@ -84,6 +97,7 @@ function Gate() {
 }
 
 export function App() {
+  useEffect(() => { preloadScreens(); }, []);
   return (
     <HashRouter>
       <UiProvider>
