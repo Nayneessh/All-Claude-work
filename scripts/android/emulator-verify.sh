@@ -5,7 +5,7 @@
 #    first launch -> start workout -> log sets -> kill the process -> relaunch -> the logged sets are still there.
 set -euo pipefail
 DIR="${1:?apk dir}"; PKG=com.monstergains.app; OUT=out; mkdir -p "$OUT"
-REL="$(ls "$DIR"/*.apk | grep -vi debug | head -1)"; DBG="$(ls "$DIR"/*debug*.apk 2>/dev/null | head -1 || true)"
+REL="$(ls "$DIR"/*.apk | grep -vi debug | head -1)"; DBG="$(find "$DIR" -name '*debug*.apk' | head -1)"
 shot() { adb exec-out screencap -p > "$OUT/$1.png"; }
 crashes() { adb logcat -d | grep -E "FATAL EXCEPTION|ANR in $PKG|Process: $PKG.*died" || true; }
 
