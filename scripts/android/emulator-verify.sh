@@ -10,6 +10,7 @@ shot() { adb exec-out screencap -p > "$OUT/$1.png"; }
 crashes() { adb logcat -d | grep -E "FATAL EXCEPTION|ANR in $PKG|Process: $PKG.*died" || true; }
 
 adb wait-for-device; adb shell input keyevent 82 || true
+echo "::notice title=Emulator::Android $(adb shell getprop ro.build.version.release | tr -d '\r') (API $(adb shell getprop ro.build.version.sdk | tr -d '\r')), $(adb shell getprop ro.product.model | tr -d '\r')"
 echo "== release: install + launch"
 adb uninstall "$PKG" >/dev/null 2>&1 || true
 adb install -r "$REL"
@@ -22,6 +23,7 @@ adb shell uiautomator dump /sdcard/ui.xml >/dev/null; adb pull /sdcard/ui.xml "$
 if [ -n "$(crashes)" ]; then echo "CRASH after release launch"; crashes; exit 1; fi
 grep -qiE "monster|next|skip|today|start" "$OUT/ui-release-launch.xml" || { echo "release app showed no recognisable UI"; exit 1; }
 echo "release launched, no crash, UI present"
+echo "::notice title=Release APK::installed, launched, UI present, no crash; relaunch after force-stop ok"
 adb shell am force-stop "$PKG"; sleep 2
 adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null; sleep 6
 [ -z "$(crashes)" ] || { echo "CRASH on relaunch"; crashes; exit 1; }
@@ -34,3 +36,4 @@ adb install -r "$DBG"
 node scripts/android/cdp-journey.mjs "$OUT"
 [ -z "$(crashes)" ] || { echo "CRASH during journey"; crashes; exit 1; }
 echo "emulator verification passed"
+echo "::notice title=WebView journey::onboarding -> quick workout -> set logged -> process killed -> relaunched -> data intact"
