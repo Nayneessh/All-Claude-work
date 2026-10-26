@@ -7,7 +7,7 @@ export default tseslint.config(
   { ignores: ['dist', 'android', 'node_modules', 'playwright-report', 'test-results', '.release', 'scripts/**/*.js'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
-  { files: ['scripts/**/*.mjs'], languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node } } },
+  { files: ['scripts/**/*.mjs'], languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node, ...globals.browser } } }, // page.evaluate callbacks run in the browser
   {
     files: ['**/*.{ts,tsx}'],
     languageOptions: { ecmaVersion: 2022, globals: { ...globals.browser, ...globals.node } },

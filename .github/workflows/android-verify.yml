@@ -12,8 +12,13 @@ permissions:
 
 jobs:
   emulator:
+    name: emulator (Android ${{ matrix.api }})
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 50
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [34, 36]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
@@ -23,19 +28,30 @@ jobs:
       - run: npm ci
       - name: APK metadata, signature, signer fingerprint, alignment
         run: bash scripts/android/inspect-apk.sh apks
+      - name: Prepare the update-in-place pair (previous and new debug builds signed with one throwaway key)
+        run: |
+          BT="$(ls -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"/build-tools/* | sort -V | tail -1)"
+          mkdir -p upgrade
+          keytool -genkeypair -keystore /tmp/throwaway.jks -alias t -keyalg RSA -keysize 2048 -validity 2 \
+            -storepass throwaway -keypass throwaway -dname "CN=throwaway test key, O=CI" 2>/dev/null
+          for pair in "apks/test/previous/MonsterGains-1.0.0-debug.apk:upgrade/old-debug.apk" "apks/test/MonsterGains-debug.apk:upgrade/new-debug.apk"; do
+            src="${pair%%:*}"; dst="${pair##*:}"
+            if [ -f "$src" ]; then "$BT/apksigner" sign --ks /tmp/throwaway.jks --ks-pass pass:throwaway --key-pass pass:throwaway --out "$dst" "$src"; fi
+          done
+          ls -la upgrade
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
-      - name: Emulator (Android 14, Pixel 6) — install, launch, drive, kill, relaunch
+      - name: Emulator — install, launch, drive, real keyboard, kill/relaunch, update in place
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: ${{ matrix.api }}
           arch: x86_64
           target: google_apis
           profile: pixel_6
           disable-animations: true
-          script: bash scripts/android/emulator-verify.sh apks
+          script: bash scripts/android/emulator-verify.sh apks upgrade
       - uses: actions/upload-artifact@v4
         if: always()
-        with: { name: emulator-evidence, path: out/, retention-days: 30 }
+        with: { name: 'emulator-evidence-api${{ matrix.api }}', path: out/, retention-days: 30 }

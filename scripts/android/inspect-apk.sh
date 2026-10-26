@@ -4,9 +4,9 @@
 set -euo pipefail
 DIR="${1:?dir}"
 BT="$(ls -d "${ANDROID_HOME:-/usr/local/lib/android/sdk}"/build-tools/* | sort -V | tail -1)"
-APK="$(ls "$DIR"/*.apk | grep -vi debug | head -1)"
+APK="$(ls "$DIR"/MonsterGains-*.apk | grep -vi debug | sort -V | tail -1)"
 echo "APK: $APK ($(stat -c %s "$APK") bytes)"
-echo "== aapt2 badging"; BADGE="$("$BT/aapt2" dump badging "$APK" | grep -E "^(package|sdkVersion|targetSdkVersion|application-label:|launchable-activity|uses-permission)")"; echo "$BADGE" | sed 's/^/  /'
+echo "== aapt2 badging"; BADGE="$("$BT/aapt2" dump badging "$APK" | grep -E "^(package|minSdkVersion|sdkVersion|targetSdkVersion|application-label:|launchable-activity)")"; echo "$BADGE" | sed 's/^/  /'
 echo "::notice title=APK badging::$(echo "$BADGE" | tr '\n' '|')"
 echo "== apksigner verify"
 "$BT/apksigner" verify --verbose --print-certs "$APK" | tee /tmp/apksigner.txt | sed 's/^/  /'
