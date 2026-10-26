@@ -9,7 +9,8 @@ import { useApp } from '@/app/AppContext';
 import { Chip, Empty, Sheet } from '@/ui/kit';
 import { Icon } from '@/ui/icons';
 
-export function ExercisePicker({ open, onClose, onPick, title = 'Choose exercise', replacing, excludeIds = [] }: { open: boolean; onClose: () => void; onPick: (e: Exercise) => void; title?: string; replacing?: Exercise; excludeIds?: string[] }) {
+const NO_IDS: string[] = [];
+export function ExercisePicker({ open, onClose, onPick, title = 'Choose exercise', replacing, excludeIds = NO_IDS }: { open: boolean; onClose: () => void; onPick: (e: Exercise) => void; title?: string; replacing?: Exercise; excludeIds?: string[] }) {
   const { today } = useApp();
   const [q, setQ] = useState('');
   const [group, setGroup] = useState<MuscleGroup | null>(null);

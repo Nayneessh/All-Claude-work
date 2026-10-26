@@ -436,6 +436,8 @@ function SubstituteSheet({ view, sessionScheduled, programId, onClose }: { view:
   const [scope, setScope] = useState<'session' | 'future'>('session');
   const [pickOpen, setPickOpen] = useState(true);
   const [scopeOpen, setScopeOpen] = useState(false);
+  const pickedRef = useRef<Exercise | null>(null); // the picker calls onPick() and then onClose() in the same tick: onClose must already see the pick
+  const excludeIds = useMemo(() => [view.exercise.id], [view.exercise.id]);
   const canFuture = sessionScheduled && !!programId && !!view.se.plan_key;
   const REASONS = ['Machine busy', 'No equipment', 'Pain / discomfort', 'Preference', 'Other'];
   const logged = view.sets.some((x) => x.status === 'completed');
@@ -451,7 +453,7 @@ function SubstituteSheet({ view, sessionScheduled, programId, onClose }: { view:
   if (logged) return <Sheet open onClose={onClose} title="Can't substitute"><p className="dim">Sets are already logged for this exercise. Add the other exercise as a new one instead — your logged sets stay where they are.</p></Sheet>;
   return (
     <>
-      <ExercisePicker open={pickOpen && !picked} onClose={() => { setPickOpen(false); if (!picked) onClose(); }} title={`Replace ${view.exercise.name}`} replacing={view.exercise} excludeIds={[view.exercise.id]} onPick={(e) => setPicked(e)} />
+      <ExercisePicker open={pickOpen && !picked} onClose={() => { setPickOpen(false); if (!pickedRef.current) onClose(); }} title={`Replace ${view.exercise.name}`} replacing={view.exercise} excludeIds={excludeIds} onPick={(e) => { pickedRef.current = e; setPicked(e); }} />
       <Sheet open={!!picked && !scopeOpen} onClose={onClose} title="Substitute" footer={<Button block variant="primary" onClick={() => void apply()}>Swap exercise</Button>}>
         {picked && (
           <div className="col">

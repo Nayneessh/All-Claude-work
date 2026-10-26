@@ -64,15 +64,20 @@ export function Rating({ value, onChange, label, lowLabel, highLabel }: { value:
 /* ───────── sheet / dialog ───────── */
 export function Sheet({ open, onClose, title, children, footer }: { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
+  // Callers pass inline arrow functions, so `onClose` changes identity on every parent render (the Today/Workout screens re-render
+  // every second). It must NOT be an effect dependency: re-running the effect moved focus to the sheet container each time, which
+  // closed the on-screen keyboard while typing. Keep the latest callback in a ref and run the effect only when `open` changes.
+  const closeRef = useRef(onClose);
+  closeRef.current = onClose;
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e: KeyboardEvent): void => { if (e.key === 'Escape') closeRef.current(); };
     window.addEventListener('keydown', onKey);
-    const prev = document.activeElement as HTMLElement | null;
-    ref.current?.focus();
-    const popBack = pushBack(onClose); // Android back closes the sheet first
-    return () => { window.removeEventListener('keydown', onKey); popBack(); prev?.focus?.(); };
-  }, [open, onClose]);
+    // Move focus into the dialog for screen readers — unless something inside it (an autofocused search box) already has it.
+    if (ref.current && !ref.current.contains(document.activeElement)) ref.current.focus();
+    const popBack = pushBack(() => closeRef.current()); // Android back closes the sheet first
+    return () => { window.removeEventListener('keydown', onKey); popBack(); };
+  }, [open]);
   if (!open) return null;
   return (
     <>
@@ -89,7 +94,9 @@ export function Sheet({ open, onClose, title, children, footer }: { open: boolea
 
 export interface ConfirmOptions { title: string; message?: ReactNode; confirmLabel?: string; cancelLabel?: string; danger?: boolean }
 export function Dialog({ title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger, onResult, extra }: ConfirmOptions & { onResult: (ok: boolean) => void; extra?: ReactNode }) {
-  useEffect(() => pushBack(() => onResult(false)), [onResult]);
+  const resultRef = useRef(onResult);
+  resultRef.current = onResult;
+  useEffect(() => pushBack(() => resultRef.current(false)), []);
   return (
     <>
       <div className="backdrop" onClick={() => onResult(false)} aria-hidden="true" />
