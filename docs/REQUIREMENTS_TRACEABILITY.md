@@ -184,7 +184,7 @@ Test names: `unit` = Vitest file under `src/`, `rls` / `sync-pg` = real-Postgres
 | 20.3 | No duplicate sessions/sets; undo; archive by default | P1 | `dedupe_key`, idempotent upsert, soft delete | unit `data.test` "double tap", rls "dedupe", sync-pg "exactly-once" | ✅ |
 | 20.4 | Missing ≠ zero; preserve exercise IDs and program versions; consistent calculation rules | P1 | `NULL` actuals; ids/versions immutable | rls "NULL not zero", unit `volume.test` | ✅ |
 | 20.5 | Export, account deletion, backups, recovery | P1 | `backup.ts`, snapshots, `delete_my_account()` | unit `backup.test` (9), rls "account deletion", E2E-7b | ✅ |
-| 20.6 | Sync devices without silently overwriting newer edits | P1 | LWW + conflict log | unit `sync.test` (16), sync-pg (6), rls "sync guard" | ✅ (verified on real Postgres; **live Supabase project not yet migrated**) |
+| 20.6 | Sync devices without silently overwriting newer edits | P1 | LWW + conflict log | unit `sync.test` (16), sync-pg (6), rls "sync guard" | ✅ (verified on real Postgres; live project migrated and catalog-verified; live two-identity test pending) |
 | 20.7 | Mid-program substitution example (keep squat prescription, record leg press, ask today/future, update only with authorisation, separate performance, show in history) | P1 | `substituteExercise`, `EditScopeSheet`, history badge "Substituted for…" | unit `data.test` (2 substitution tests) | ✅ |
 
 ## §21 Search, filters, tags, notes
@@ -218,7 +218,7 @@ Test names: `unit` = Vitest file under `src/`, `rls` / `sync-pg` = real-Postgres
 | 24.1 | Units, default rest, RPE/RIR display and entry preferences | P1 | Settings → Logging | E2E-1 | ✅ |
 | 24.2 | Exercise-library prefs; custom dashboard widgets; configurable PR definitions | P3 | — | — | 🟡 library filters ✅; widgets / PR definitions fixed |
 | 24.3 | Week start day; volume calculation rules | P1 | Settings → Calculation rules | unit `periods.test`, `volume.test` | ✅ |
-| 24.4 | Cloud sync, offline mode | P1 | `data/sync`, Auth | sync-pg | ✅ (live project pending migration) |
+| 24.4 | Cloud sync, offline mode | P1 | `data/sync`, Auth | sync-pg | ✅ (live project migrated 2026-10-26; no account has synced yet) |
 | 24.5 | Wearable/health-platform integrations; heart-rate/activity import | P4 | — | — | ⏳ Phase 4 |
 | 24.6 | CSV/JSON export | P1 | `Backup` | unit `backup.test`, E2E-7b | ✅ |
 | 24.7 | Account deletion, privacy controls, optional app lock | P1 | Settings | rls, unit | ✅ |
@@ -258,7 +258,7 @@ Test names: `unit` = Vitest file under `src/`, `rls` / `sync-pg` = real-Postgres
 | --- | --- |
 | Name "Monster Gains", supplied logo/icon, golden/night-green/night-blue brand | ✅ `src/brand`, `resources/` (icon + splash generated from the supplied artwork) |
 | "I should never lose my data or progress" | ✅ five layers (ARCHITECTURE §7); the one residual risk — losing the **signing key**, which blocks in-place updates — is covered in ANDROID_RELEASE.md |
-| Supabase backend with migrations, RLS tested with different identities | 🟡 migrations + 30 real-Postgres tests ✅; **applying to the live project is pending** (the MCP server asked a question that has not been answered) |
+| Supabase backend with migrations, RLS tested with different identities | ✅ migrations applied to the live project and catalog verified (17 tables, RLS forced, 51 policies, private bucket, 110 exercises digest-identical); ✅ 30 real-Postgres tests across two identities; 🟡 the same access test has not yet been run *on the live project* |
 | Signed APK, metadata inspected, signature verified, emulator install/launch, persistence | ✅ signed (v2, RSA-4096), metadata + signature + alignment inspected in CI, installed/launched on an Android 14 emulator, data survived a process kill (CI runs 3 and 5). One earlier re-run (run 4) failed in a flaky smoke heuristic that was then replaced. ⏳ not tried on a physical phone. Details: ANDROID_RELEASE.md |
 | Direct download link, verified | ✅ HTTP 200 and identical SHA-256 after downloading the public URL |
 | Documentation set (README, ARCHITECTURE, IMPLEMENTATION_PLAN, DATA_MODEL, TESTING, ANDROID_RELEASE, REQUIREMENTS_TRACEABILITY) | ✅ in `docs/` |

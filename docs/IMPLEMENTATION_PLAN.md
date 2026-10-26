@@ -16,12 +16,12 @@ Method: inspect → plan → implement in **vertical slices** → verify each sl
 | 7 | Recovery, body, goals, suggestions | readiness + correlations, measurements, photos, goals with trajectory, rule-based suggestions | unit | ✅ |
 | 8 | Add activity | MMA / cardio / sport / mobility sessions | unit + E2E | ✅ |
 | 9 | Safety net | sync engine, manager, JSON/CSV export, merge-restore, rolling snapshots, app lock, account deletion | 60+ tests, real-Postgres suite | ✅ |
-| 10 | Backend | schema, RLS, guard trigger, storage policies, seed migration | 30 real-Postgres tests | ✅ written + verified locally · ⏳ **apply to the live Supabase project** |
+| 10 | Backend | schema, RLS, guard trigger, storage policies, seed migration | 30 real-Postgres tests + live catalog verification | ✅ applied 2026-10-26 · ⏳ live two-identity access test pending |
 | 11 | Android release | CI build, signing, verification, emulator job, release page | see ANDROID_RELEASE.md | see that file |
 
 ## Remaining / deferred (in priority order)
 
-1. **Apply the two migrations to the live Supabase project and run the same RLS suite against it** — blocked on the owner answering the Supabase tool's question (it is the owner's database; no workaround was attempted).
+1. **Run the two-identity access test against the live Supabase project** (rolled-back transaction; needs the owner to confirm the tool prompt). The migrations themselves are applied and their catalog verified.
 2. Confirm Supabase Auth settings: e-mail confirmation on/off and the *Site URL / redirect URL* used by password-reset links (cannot be set through the tooling used; the app works fully without an account, so this does not block use).
 3. Device verification of notifications (incl. Snooze) and TalkBack on a physical phone.
 4. Blueprint items deliberately left out (see traceability): voice input, wearables/health imports, video technique tracking, set-level media, multi-user coach mode, left-right comparison charts, program-completion and inactivity prompts, "export selected sessions".

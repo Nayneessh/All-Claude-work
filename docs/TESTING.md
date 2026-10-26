@@ -56,7 +56,7 @@ Run as two different authenticated identities (A, B), an unauthenticated session
 
 Sync engine against the real schema (6): full logged workout accepted by every real constraint; **exactly-once** even after re-pushing everything (lost acknowledgement); offline edits then reconnect in a valid parent-before-child order after an app restart; **reinstall/new phone restores the whole history identically**; a newer edit from another device wins and an older replay is ignored; another account cannot read, overwrite or detect the data.
 
-**What this does not prove:** it runs PostgreSQL 18 (PGlite) with minimal stand-ins for Supabase's `auth`/`storage` schemas and PostgREST — not the managed Supabase service itself. The same SQL has **not yet been applied to the live project** (the Supabase tool asked the owner a question that is still unanswered), so the live service is untested.
+**What this does not prove:** it runs PostgreSQL 18 (PGlite) with minimal stand-ins for Supabase's `auth`/`storage` schemas and PostgREST — not the managed Supabase service itself. **Live project (applied by the owner on 2026-10-26, verified read-only):** 17 tables, RLS enabled *and forced* on all 17, 51 public policies (0 for DELETE/ALL), 17 guard triggers, `anon` holds 0 table privileges, `authenticated` holds no DELETE/TRUNCATE, `delete_my_account()` is security definer (not executable by `anon`), private `progress-photos` bucket (5 MB, jpeg/png/webp) with 4 owner-folder policies, and 110 built-in exercises whose content digest (`d189ab56…`) equals the app's seed. **Still not run on the live project:** the two-identity read/write/hijack test (the Supabase tool asks the owner to confirm that statement; it is written, rolls back by design, and passed in the PGlite suite).
 
 ### End-to-end (Playwright, Pixel 7 profile) — 20 journeys, all passing; 3 consecutive full runs green; also green in GitHub Actions on a Linux runner (CI run 40190887930, `e2e` job — 19 journeys at that commit; the 20th, *Add activity*, was added afterwards)
 
@@ -110,7 +110,7 @@ Not done: TalkBack walk-through, dark/light OS-theme switching (the app is dark-
 
 ## 4. Not tested / known gaps (stated plainly)
 
-* Live Supabase project (migration not applied yet) — auth e-mail flows, real PostgREST/Storage behaviour.
+* Live Supabase project: two-identity access test, auth e-mail flows, real PostgREST/Storage behaviour (schema is applied and catalog-verified).
 * Physical Android device: notifications (including Snooze), haptics, hardware back, TalkBack.
 * Multi-device concurrent editing beyond the deterministic last-writer-wins rule (field-level merge is not attempted).
 * Long-run soak (weeks of data) — mitigated by the two-year scale test.
