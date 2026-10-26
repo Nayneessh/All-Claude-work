@@ -71,11 +71,23 @@ async function calibrate(page) {
   return { dpr, ox: 540 - cal.x * dpr, oy: 1500 - cal.y * dpr };
 }
 async function realTap(page, cal, locator) {
+  // a real finger can only hit what is on the screen: bring the element to the middle of the visible area first
+  await locator.evaluate((el) => el.scrollIntoView({ block: 'center', inline: 'nearest' }));
+  await sleep(500);
   const box = await locator.boundingBox();
   if (!box) throw new Error('element has no box to tap');
   const x = Math.round(cal.ox + (box.x + box.width / 2) * cal.dpr);
   const y = Math.round(cal.oy + (box.y + box.height / 2) * cal.dpr);
   await device.shell(`input tap ${x} ${y}`);
+}
+/** Tap until `appears` is visible (a tap that lands on a moving layout can miss once); keep a screenshot if it never works. */
+async function tapUntilVisible(page, cal, tapTarget, appears, name) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await realTap(page, cal, tapTarget);
+    try { await appears.waitFor({ state: 'visible', timeout: 6_000 }); return; } catch { console.log(`   [${name}] tap ${attempt} did not open it, retrying`); }
+  }
+  await device.screenshot({ path: `${OUT}/06-tap-failed-${name.replace(/\W+/g, '-').toLowerCase()}.png` });
+  throw new Error(`CHECK FAILED: ${name} did not open after 3 real taps`);
 }
 
 async function keyboardStability(page, cal, label, openByTapping, text) {
@@ -160,9 +172,15 @@ if (MODE === 'keyboard') {
   await sleep(800);
   await keyboardStability(page, cal, 'Set 1 Reps', async () => { await realTap(page, cal, page.getByLabel('Set 1 Reps').first()); }, '12');
   // 3) a text field in another sheet (Add activity on Today)
+  await page.evaluate(() => document.activeElement?.blur?.());
+  await sleep(1000);
   await page.goto(page.url().split('#')[0] + '#/');
   await page.getByRole('button', { name: 'Add activity' }).waitFor({ timeout: 15_000 });
-  await keyboardStability(page, cal, 'Minutes', async () => { await realTap(page, cal, page.getByRole('button', { name: 'Add activity' })); await page.getByLabel('Minutes').waitFor(); await realTap(page, cal, page.getByLabel('Minutes')); }, '45');
+  await sleep(1000);
+  await keyboardStability(page, cal, 'Minutes', async () => {
+    await tapUntilVisible(page, cal, page.getByRole('button', { name: 'Add activity' }), page.getByLabel('Minutes'), 'Add activity sheet');
+    await realTap(page, cal, page.getByLabel('Minutes'));
+  }, '45');
 }
 
 await device.close();
