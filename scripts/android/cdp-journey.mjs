@@ -94,15 +94,16 @@ async function keyboardStability(page, cal, label, openByTapping, text) {
   await openByTapping();
   const field = page.getByLabel(label);
   await field.waitFor({ timeout: 10_000 });
-  await page.evaluate((sel) => {
-    const el = document.querySelector(sel) ?? document.activeElement;
+  // the field is found by its accessible label (an aria-label or a <label for>), so "focused" is "this exact element is document.activeElement"
+  const isFocused = () => field.evaluate((el) => el === document.activeElement);
+  await field.evaluate((el) => {
     window.__kb = { blur: 0, resize: 0 };
     el.addEventListener('blur', () => { window.__kb.blur++; });
     window.visualViewport?.addEventListener('resize', () => { window.__kb.resize++; });
-  }, `input[aria-label="${label}"]`);
+  });
   await sleep(1200);
   // some emulators only show the soft keyboard once the field itself is tapped
-  if (!(await page.evaluate((l) => document.activeElement?.getAttribute('aria-label') === l, label))) await realTap(page, cal, field);
+  if (!(await isFocused())) await realTap(page, cal, field);
   await sleep(800);
   const samples = [];
   let sampling = true;
@@ -115,7 +116,7 @@ async function keyboardStability(page, cal, label, openByTapping, text) {
   const transitions = known.reduce((n, s, i) => (i > 0 && s !== known[i - 1] ? n + 1 : n), 0);
   const stats = await page.evaluate(() => window.__kb);
   const value = await field.inputValue();
-  const focused = await page.evaluate((l) => document.activeElement?.getAttribute('aria-label') === l, label);
+  const focused = await isFocused();
   console.log(`   [${label}] value="${value}" blur=${stats.blur} viewportResize=${stats.resize} imeSamples=${known.length} imeShown=${shownAtLeastOnce} imeTransitions=${transitions} focused=${focused}`);
   await device.screenshot({ path: `${OUT}/06-keyboard-${label.replace(/\W+/g, '-').toLowerCase()}.png` });
   check(value === text, `${label}: everything typed arrived ("${value}")`);
