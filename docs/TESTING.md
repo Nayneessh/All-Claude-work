@@ -77,7 +77,11 @@ Sync engine against the real schema (6): full logged workout accepted by every r
 | Swap exercise (1.0.1) | `07-sheets-keyboard-swap` ×2 | pick a replacement → the **confirmation sheet appears** (it used to vanish) → swap → toast, 9 sets remain and are loggable; "future sessions too" → scope preview → applied as a new program version |
 | Typing never loses focus (1.0.1) | `07-…` ×3 | Add-activity minutes, exercise search and a set row: type one character per 1.2–1.3 s across the screen's 1-second clock ticks — blur events stay 0, field stays focused, value complete |
 
-### Android runtime (GitHub Actions emulator, Android 14 / API 34) — see ANDROID_RELEASE.md for the full log
+### Android runtime — 1.0.1 (GitHub Actions emulators, Android 14 / API 34 **and** Android 16 / API 36; run 8, both jobs passed)
+
+On top of the checks below: **real touch + real on-screen keyboard** typing in the exercise search, a set row and the Add-activity sheet (0 focus losses, 0 keyboard open/close transitions, all characters arrived) and **update in place** (old build + logged set → new build installed over it → set still there). Runs 6 and 7 of that workflow failed because of two defects in the *test script* (an off-screen tap; a focus check by `aria-label`), not in the app — details in `docs/ANDROID_RELEASE.md`. Limits: stock emulator keyboard only, debug twin, throw-away key for the install-over pair.
+
+### Android runtime — 1.0.0 (GitHub Actions emulator, Android 14 / API 34) — see ANDROID_RELEASE.md for the full log
 
 The **signed release APK** installed on a fresh emulator, reached the foreground without a crash and came back after a force-stop (CI runs 1, 3, 5). The debuggable twin of the same bundle was driven inside Android's real WebView: first launch → set logged → app process killed → relaunch → the logged set (reps = 10) still there (CI runs 3 and 5, passed). Run 4 failed in my first-generation release smoke heuristic (text-matching a `uiautomator` dump — timing-sensitive); it was replaced and run 5 passed on the new check. Static APK checks (signature v2, signer fingerprint = published, zipalign, aapt2 metadata) passed in runs 4 and 5.
 
