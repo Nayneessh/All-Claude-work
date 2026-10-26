@@ -4,19 +4,23 @@
 
 | | |
 | --- | --- |
-| **Direct download** | https://github.com/Nayneessh/All-Claude-work/raw/release/MonsterGains-1.0.0.apk |
-| Mirror | https://raw.githubusercontent.com/Nayneessh/All-Claude-work/release/MonsterGains-1.0.0.apk |
-| Size / SHA-256 | 5,467,992 bytes · `fef729717054685e34dbade30fb3a80027bc1636ebb79235711aa60e7f194e64` |
-| Signer certificate SHA-256 | `2fff1f48500b4bcc5407d5c5a8c8af5cacf07d564ab08d4045f06c978ea90e15` (CN=Monster Gains, RSA-4096, SHA256withRSA, valid 2026-10-25 → 2056-10-17) |
-| Package · version | `com.monstergains.app` · 1.0.0 (versionCode = CI run number, strictly increasing) |
+| **Direct download (current: 1.0.1)** | https://github.com/Nayneessh/All-Claude-work/raw/release/MonsterGains-1.0.1.apk |
+| Mirror | https://raw.githubusercontent.com/Nayneessh/All-Claude-work/release/MonsterGains-1.0.1.apk |
+| Size / SHA-256 | 5,468,008 bytes · `6433aaadff868e19a689055981c73acb1a4216efc2d0eefa048d896acd4af846` |
+| Signer certificate SHA-256 | `2fff1f48500b4bcc5407d5c5a8c8af5cacf07d564ab08d4045f06c978ea90e15` (CN=Monster Gains, RSA-4096, SHA256withRSA, valid 2026-10-25 → 2056-10-17) — **identical to 1.0.0**, which is what lets 1.0.1 install over it |
+| Package · version | `com.monstergains.app` · **1.0.1, versionCode 20** (1.0.0 was 14; versionCode = CI run number, strictly increasing) |
 | Requirements | Android 7.0+ (minSdk 24); built for Android 16 (target/compile SDK 36) |
-| Source of this build | commit `03dfbd6` (recorded in `SOURCE_SHA` on the `release` branch), GitHub Actions run 14 |
+| Source of this build | commit `8d22a377` (recorded in `SOURCE_SHA` on the `release` branch) |
+| Previous build | `previous/MonsterGains-1.0.0.apk` on the `release` branch (5,467,992 bytes · `fef72971…194e64`) |
 
-The URL was fetched after publication: HTTP 200, same byte count, same SHA-256 as the signed file.
+The 1.0.1 URL was fetched after publication: HTTP 200, same byte count, same SHA-256 as the signed file.
+
+**1.0.1 fixes:** (1) *Swap exercise* no longer freezes — choosing the replacement now opens the confirmation sheet; (2) typing in a text box no longer makes the on-screen keyboard flicker — sheets stopped re-grabbing focus every second when the clock on Today/Workout re-rendered. Details: `docs/TESTING.md` defects 10 and 11.
 
 **Install:** open the link on the phone → allow *Install unknown apps* for the browser/Files app once → open the file → *Install*. First launch shows three short screens, then *Start training*.
-**Verify (optional):** `sha256sum -c SHA256SUMS` (in the `release` branch) and `apksigner verify --print-certs MonsterGains-1.0.0.apk` — the printed certificate SHA-256 must equal the value above.
-**Update later:** install the next APK over this one. It must be signed with the **same key**, otherwise Android refuses the update (see key custody). Never uninstall first — uninstalling erases the on-device database (your cloud copy/backups remain, but avoid the detour).
+**Already have Monster Gains? Install 1.0.1 OVER it — do not uninstall.** Same package name + same signing certificate + higher versionCode = Android treats it as an update and keeps the app's data (the database lives in the app's private storage and is not touched). Before updating, optional but cheap: *More → Backup → Save a full backup*. Your cloud copy (if you are signed in) and the app's rolling daily snapshots are additional safety nets. If Android answers "App not installed", the usual causes are a different signing key (not the case here) or a build with a lower versionCode — do not uninstall in that case; send the exact message instead.
+**Verify (optional):** `sha256sum -c SHA256SUMS` (in the `release` branch) and `apksigner verify --print-certs MonsterGains-1.0.1.apk` — the printed certificate SHA-256 must equal the value above.
+**Update later:** the same rule — install the next APK over this one. It must be signed with the **same key**, otherwise Android refuses the update (see key custody). Never uninstall first — uninstalling erases the on-device database (your cloud copy/backups remain, but avoid the detour).
 
 ## How a release is produced
 

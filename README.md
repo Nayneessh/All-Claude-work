@@ -8,7 +8,7 @@ Built from the product blueprint *Fitness App — Product Blueprint & Requiremen
 
 ## Install (Android 7.0+)
 
-1. Download the signed APK: **https://github.com/Nayneessh/All-Claude-work/raw/release/MonsterGains-1.0.0.apk** — checksum and signing-certificate fingerprint to compare are in [docs/ANDROID_RELEASE.md](docs/ANDROID_RELEASE.md).
+1. Download the signed APK: **https://github.com/Nayneessh/All-Claude-work/raw/release/MonsterGains-1.0.1.apk** — checksum and signing-certificate fingerprint to compare are in [docs/ANDROID_RELEASE.md](docs/ANDROID_RELEASE.md).
 2. Open the file on the phone and allow *Install unknown apps* for your browser/file manager when asked.
 3. First launch: three short screens → **Start training**. The v6 routine is already loaded. No account is required; sign in later to back up and sync.
 

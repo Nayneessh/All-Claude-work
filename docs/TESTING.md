@@ -60,7 +60,7 @@ Sync engine against the real schema (6): full logged workout accepted by every r
 
 **Live sync observed (2026-10-26, read-only queries on the live project):** after the owner created an account in the installed app, the server holds exactly what the phone created — 1 confirmed user, the profile (onboarding done), the *v6 · Arms First · Chest = Back* program (active, from 2026-10-26, 6/week) with its version, 6 workout days, 32 planned exercises, the program-created modification, 2 audit events and one cancelled empty *Quick workout*; 0 orphan rows. The user signed in on 25 Oct *before* the tables existed; the rows stayed queued on the phone and arrived on 26 Oct as soon as the schema was applied — the retry behaviour working as designed, nothing lost. **Not yet exercised live:** set/session-exercise rows (no real workout has been logged yet), pulling history onto a second device or after a reinstall, photo upload, cross-device conflicts.
 
-### End-to-end (Playwright, Pixel 7 profile) — 20 journeys, all passing; 3 consecutive full runs green; also green in GitHub Actions on a Linux runner (CI run 40190887930, `e2e` job — 19 journeys at that commit; the 20th, *Add activity*, was added afterwards)
+### End-to-end (Playwright, Pixel 7 profile) — 25 journeys, all passing; green in GitHub Actions on a Linux runner (CI run 40359059146 at the 1.0.1 commit `8d22a377`; earlier: 3 consecutive full runs of the first 20)
 
 | Journey | Test | Asserts |
 | --- | --- | --- |
@@ -74,6 +74,8 @@ Sync engine against the real schema (6): full logged workout accepted by every r
 | 8 Security | `04-…` | shipped bundle contains no `service_role`, secret key, private key block; any JWT in it is not service-role; no auth tokens in storage while signed out |
 | 9 Lifecycle | `05-…` ×4 | rest timer survives process restart; back navigation never duplicates/loses a workout; a screen whose code fails to load shows a recoverable message; 320 px width: no horizontal scroll, tap target ≥ 44 px, 130 % text still reachable |
 | Add activity | `06-…` | MMA logged as its own session; Monday strength still planned |
+| Swap exercise (1.0.1) | `07-sheets-keyboard-swap` ×2 | pick a replacement → the **confirmation sheet appears** (it used to vanish) → swap → toast, 9 sets remain and are loggable; "future sessions too" → scope preview → applied as a new program version |
+| Typing never loses focus (1.0.1) | `07-…` ×3 | Add-activity minutes, exercise search and a set row: type one character per 1.2–1.3 s across the screen's 1-second clock ticks — blur events stay 0, field stays focused, value complete |
 
 ### Android runtime (GitHub Actions emulator, Android 14 / API 34) — see ANDROID_RELEASE.md for the full log
 
@@ -109,6 +111,10 @@ Not done: TalkBack walk-through, dark/light OS-theme switching (the app is dark-
 | 7 | `.gold` utility colliding with highlighted `.card` variant | visual review | unreadable/odd selected cards |
 | 8 | Routine says "log MMA with *Add activity*" but no such feature existed | traceability review | missing feature → built |
 | 9 | Unused `pgcrypto` extension in the migration | PGlite | needless surface on the server |
+| 10 | **Sheet stole focus every second**: its effect depended on the `onClose` prop, callers pass inline arrows, and Today/Workout re-render each second (clock) → the effect re-ran, focused the sheet container and the on-screen keyboard closed/re-opened while typing | owner on a real phone (the desktop suites did not type across clock ticks); reproduced by a failing E2E before the fix | typing felt like the keyboard "fluttering"; characters could be lost |
+| 11 | **Substitute exercise froze**: the picker calls `onPick()` then `onClose()` in the same tick; `onClose` read a stale `picked` (null) and dismissed the whole flow, so the confirmation sheet never showed | owner on a real phone; reproduced by a failing E2E before the fix | "the screen is just stuck" — swapping impossible |
+
+Lesson recorded for 10 and 11: both were missing from the earlier suites because those typed/clicked faster than the 1-second re-render. The 1.0.1 tests now deliberately type *slower than the clock tick*.
 
 ## 4. Not tested / known gaps (stated plainly)
 
