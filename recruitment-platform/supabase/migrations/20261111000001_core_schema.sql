@@ -7,6 +7,8 @@
 --   super_admin, admin  → see every entity (central administration)
 --   recruiter, viewer   → only entities listed in profiles.entity_ids
 --   viewer              → read-only, no CV downloads
+-- First administrator: only an email listed in public.bootstrap_admins, and only once that email is CONFIRMED, becomes super_admin.
+--   Everyone else starts as an inactive viewer until an administrator activates them. (No "first sign-up wins" rule.)
 -- Append-only (enforced by triggers, even for the service role): assessments, decisions, audit_logs, mandate_versions.
 -- Approved rubrics are frozen (only approved → superseded is allowed).
 
@@ -35,6 +37,11 @@ create table public.profiles (
   active boolean not null default false,
   entity_ids uuid[] not null default '{}',
   created_at timestamptz not null default now()
+);
+
+-- Emails allowed to become the first super administrator. RLS on, no policies: invisible and unwritable through the API.
+create table public.bootstrap_admins (
+  email text primary key check (email = lower(email))
 );
 
 create table public.mandates (
@@ -177,6 +184,7 @@ $$;
 alter table public.entities enable row level security;
 alter table public.departments enable row level security;
 alter table public.profiles enable row level security;
+alter table public.bootstrap_admins enable row level security;
 alter table public.mandates enable row level security;
 alter table public.mandate_versions enable row level security;
 alter table public.rubrics enable row level security;
@@ -315,15 +323,26 @@ begin
 end $$;
 create trigger profiles_guard before insert or update on public.profiles for each row execute function public.profiles_guard();
 
--- First sign-up becomes the super admin; everyone after starts as an inactive viewer until an administrator activates them.
+-- Every new auth user gets an INACTIVE viewer profile. A listed bootstrap email is promoted only once it is confirmed
+-- (so nobody can claim the admin role by signing up with someone else's address before the owner confirms it).
 create function public.handle_new_user() returns trigger language plpgsql security definer set search_path = public as $$
-declare first_user boolean := not exists (select 1 from public.profiles);
 begin
   insert into public.profiles (id, email, name, role, active)
-  values (new.id, new.email, coalesce(split_part(new.email, '@', 1), ''), case when first_user then 'super_admin' else 'viewer' end, first_user);
+  values (new.id, new.email, coalesce(split_part(new.email, '@', 1), ''), 'viewer', false);
   return new;
 end $$;
-create trigger on_auth_user_created after insert on auth.users for each row execute function public.handle_new_user();
+
+create function public.promote_bootstrap_admin() returns trigger language plpgsql security definer set search_path = public as $$
+begin
+  if new.email_confirmed_at is not null and exists (select 1 from public.bootstrap_admins b where b.email = lower(new.email)) then
+    update public.profiles set role = 'super_admin', active = true where id = new.id;
+  end if;
+  return new;
+end $$;
+
+-- Trigger names sort so the profile exists before promotion runs.
+create trigger trg_1_new_user after insert on auth.users for each row execute function public.handle_new_user();
+create trigger trg_2_promote_admin after insert or update of email_confirmed_at on auth.users for each row execute function public.promote_bootstrap_admin();
 
 -- ───────────────────────── Storage (original CVs) ─────────────────────────
 -- Private bucket; object path is <entity_id>/<job_id>/<file>. Viewers cannot download. Files are write-once.

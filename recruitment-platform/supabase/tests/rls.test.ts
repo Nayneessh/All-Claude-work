@@ -16,13 +16,43 @@ beforeAll(async () => {
 });
 
 describe('bootstrap and profiles', () => {
-  it('the first sign-up became super admin; later sign-ups default to inactive viewers', async () => {
-    const r = await db.query<{ id: string; role: string; active: boolean }>(`select id, role, active from public.profiles where id in ('${U.super}')`);
-    expect(r.rows[0]).toMatchObject({ role: 'super_admin', active: true });
+  it('only a listed, confirmed email becomes super admin; everyone else starts as an inactive viewer', async () => {
+    const r = await db.query<{ role: string; active: boolean }>(`select role, active from public.profiles where id='${U.super}'`);
+    expect(r.rows[0]).toEqual({ role: 'super_admin', active: true });
     const fresh = await freshDb();
-    await fresh.exec(`insert into auth.users (id, email) values ('99999999-9999-4999-8999-999999999999', 'late@example.test')`);
-    const late = await fresh.query<{ role: string; active: boolean }>(`select role, active from public.profiles where id='99999999-9999-4999-8999-999999999999'`);
-    expect(late.rows[0]).toEqual({ role: 'viewer', active: false });
+    const late = '99999999-9999-4999-8999-999999999999';
+    await fresh.exec(`insert into auth.users (id, email, email_confirmed_at) values ('${late}', 'late@example.test', now())`);
+    expect((await fresh.query(`select role, active from public.profiles where id='${late}'`)).rows[0]).toEqual({ role: 'viewer', active: false });
+  });
+  it('signing up first does NOT confer admin: there is no "first user wins" rule', async () => {
+    const fresh = new (await import('@electric-sql/pglite')).PGlite();
+    const { migrationSql } = await import('./harness');
+    // A project where nobody is listed as a bootstrap admin: even the very first sign-up stays an inactive viewer.
+    await fresh.exec(`create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls; create schema auth; create schema storage;
+      create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
+      create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+      create table storage.buckets (id text primary key, name text not null, public boolean default false, file_size_limit bigint, allowed_mime_types text[]);
+      create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets(id), name text, owner uuid, created_at timestamptz default now());
+      alter table storage.objects enable row level security;
+      create function storage.foldername(name text) returns text[] language plpgsql immutable as $$ declare p text[]; begin p := string_to_array(name, '/'); return p[1:array_length(p,1)-1]; end $$;
+      grant usage on schema public, auth, storage to anon, authenticated, service_role;`);
+    await fresh.exec(migrationSql('20261111000001_core_schema.sql'));
+    await fresh.exec(`insert into auth.users (id, email, email_confirmed_at) values ('88888888-8888-4888-8888-888888888888', 'first@example.test', now())`);
+    expect((await fresh.query(`select role, active from public.profiles`)).rows[0]).toEqual({ role: 'viewer', active: false });
+  });
+  it('an unconfirmed sign-up with the admin email is NOT promoted until the address is confirmed (pre-hijack guard)', async () => {
+    const fresh = await freshDb();
+    const id = '77777777-7777-4777-8777-777777777777';
+    await fresh.exec(`insert into public.bootstrap_admins (email) values ('owner@example.test')`);
+    await fresh.exec(`insert into auth.users (id, email, email_confirmed_at) values ('${id}', 'Owner@Example.test', null)`);
+    expect((await fresh.query(`select role, active from public.profiles where id='${id}'`)).rows[0]).toEqual({ role: 'viewer', active: false });
+    await fresh.exec(`update auth.users set email_confirmed_at = now() where id='${id}'`);
+    expect((await fresh.query(`select role, active from public.profiles where id='${id}'`)).rows[0]).toEqual({ role: 'super_admin', active: true });
+  });
+  it('the bootstrap list cannot be read or changed through the API', async () => {
+    expect(await failure(as(db, U.admin, () => db.query(`select * from public.bootstrap_admins`)))).not.toBeNull();
+    expect(await failure(as(db, U.super, () => db.exec(`insert into public.bootstrap_admins (email) values ('evil@example.test')`)))).not.toBeNull();
+    expect(await failure(asAnon(db, () => db.query(`select * from public.bootstrap_admins`)))).not.toBeNull();
   });
   it('a user reads only their own profile; an admin reads all', async () => {
     expect((await as(db, U.rec1, () => db.query(`select id from public.profiles`))).rows).toHaveLength(1);

@@ -8,7 +8,11 @@ Nothing here has been run against your accounts. Each step changes shared infras
 2. Apply `supabase/migrations/20261111000001_core_schema.sql` (SQL editor, `supabase db push`, or the MCP `apply_migration`). It creates the tables, RLS policies, append-only/frozen-rubric triggers, the profile bootstrap trigger and the private `cvs` bucket. The same file is what the PGlite tests run.
 3. Auth → enable email/password; decide on email confirmation; **turn on MFA** (TOTP) for administrators.
 4. Run Supabase's security advisor afterwards and fix anything it reports.
-5. **The first account to sign up becomes the super admin.** Create it yourself immediately after applying the migration. Later accounts are inactive viewers until an admin activates them (Settings & Administration → Users).
+5. **First administrator.** There is no "first sign-up wins" rule. Only an email listed in `public.bootstrap_admins`, and only after that address is *confirmed*, becomes super admin:
+   ```sql
+   insert into public.bootstrap_admins (email) values ('you@yourcompany.com');
+   ```
+   Run that once (SQL editor), then sign up with that email and confirm it. Everyone else starts as an inactive viewer until an administrator activates them (Settings & Administration → Users). Do this **before** the live site is pointed at the project.
 6. Seed business entities and departments in the app (Settings → Entities), then assign recruiters/viewers to entities.
 
 ## 2. Vercel (static app + `/api/ai`)

@@ -11,7 +11,7 @@ import { join } from 'node:path';
 const SUPABASE_STUBS = `
 create role anon nologin; create role authenticated nologin; create role service_role nologin bypassrls;
 create schema auth; create schema storage;
-create table auth.users (id uuid primary key, email text);
+create table auth.users (id uuid primary key, email text, email_confirmed_at timestamptz);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 create table storage.buckets (id text primary key, name text not null, public boolean default false, file_size_limit bigint, allowed_mime_types text[]);
 create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text references storage.buckets(id), name text, owner uuid, created_at timestamptz default now());
@@ -45,8 +45,9 @@ export async function freshDb(): Promise<PGlite> {
   const db = new PGlite();
   await db.exec(SUPABASE_STUBS);
   await db.exec(migrationSql('20261111000001_core_schema.sql'));
-  // First sign-up becomes super admin (bootstrap); the rest are inactive viewers until activated below.
-  for (const [k, id] of Object.entries(U)) await db.exec(`insert into auth.users (id, email) values ('${id}', '${k}@example.test')`);
+  // Only a listed, CONFIRMED email becomes super admin; the rest are inactive viewers until activated below.
+  await db.exec(`insert into public.bootstrap_admins (email) values ('super@example.test')`);
+  for (const [k, id] of Object.entries(U)) await db.exec(`insert into auth.users (id, email, email_confirmed_at) values ('${id}', '${k}@example.test', now())`);
   await db.exec(`
     update public.profiles set role='admin', active=true where id='${U.admin}';
     update public.profiles set role='recruiter', active=true, entity_ids=array['${E1}']::uuid[] where id='${U.rec1}';

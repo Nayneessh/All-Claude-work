@@ -71,7 +71,7 @@ function Login(): ReactNode {
       {msg && <div className="callout bad small" role="alert">{msg}</div>}
       <div className="row"><button className="btn primary" disabled={busy} type="submit">Sign in</button><button className="btn" type="button" disabled={busy || pw.length < 8 || !email} onClick={() => void submit('up')}>Create account</button>
         {rt.awaitingActivation && <button className="btn ghost" type="button" onClick={() => void rt.signOut()}>Sign out</button>}</div>
-      <p className="muted small">The first account created becomes the super administrator. Later accounts start inactive until an administrator activates them.</p>
+      <p className="muted small">New accounts start inactive until an administrator activates them and assigns business entities. You will be able to use the platform once that is done.</p>
     </form></div>
   );
 }
