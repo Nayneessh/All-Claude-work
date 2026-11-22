@@ -22,7 +22,7 @@ describe('health and config', () => {
     expect(r.status).toBe(200);
     expect(r.json).toMatchObject({ ok: true, db: 'ok', ai: 'mock', storage: 'postgres' });
     const c = await h.call('GET', '/api/config');
-    expect(Object.keys(c.json).sort()).toEqual(['botcheck', 'closedDays', 'maintenance', 'servicePromise', 'testBanner', 'unbookedHours', 'whatsappConfigured']);
+    expect(Object.keys(c.json).sort()).toEqual(['botcheck', 'closedDays', 'demoStore', 'maintenance', 'servicePromise', 'testBanner', 'unbookedHours', 'whatsappConfigured']);
   });
   it('sends no-store, noindex and no-referrer headers on every response', async () => {
     const r = await h.call('GET', '/api/health');

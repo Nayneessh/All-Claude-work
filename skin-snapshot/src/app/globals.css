@@ -228,6 +228,7 @@ html[lang='hi'] .zone .attr { text-transform: none; letter-spacing: 0; font-size
 .camera-overlay.pass .oval { stroke: #9CC4AE; stroke-dasharray: none; stroke-width: 7; }
 .camera-overlay .glow { fill: rgba(74, 107, 93, 0.16); }
 .camera-overlay.pass .glow { fill: rgba(74, 107, 93, 0.3); }
+.camera-tap { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); z-index: 3; font-size: 1.1rem; padding: 14px 24px; }
 .camera-hint { position: absolute; left: 12px; right: 12px; bottom: 14px; background: rgba(245, 230, 200, 0.97); color: var(--ink); border-radius: 12px; padding: 10px 14px; font-weight: 700; text-align: center; border: 2px solid var(--amber); }
 .camera-hint.pass { background: var(--sage); color: var(--champagne); border-color: var(--champagne); }
 .camera-top { position: absolute; left: 12px; right: 12px; top: 12px; display: flex; justify-content: space-between; gap: 8px; }

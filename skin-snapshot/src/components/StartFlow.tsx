@@ -14,6 +14,7 @@ interface PublicConfig {
   unbookedHours: number;
   closedDays: number;
   maintenance: boolean;
+  demoStore?: boolean;
 }
 
 export function StartFlow() {
@@ -79,6 +80,7 @@ export function StartFlow() {
             );
           })}
         </div>
+        <p style={{ marginTop: 22 }}><Link href={`/${lang}/camera-preview`} data-testid="try-camera">{d.camera.preview.link}</Link></p>
       </div>
     );
   }
@@ -90,6 +92,8 @@ export function StartFlow() {
       <h1 style={{ fontSize: 'clamp(1.8rem,5vw,2.6rem)' }}>{d.start.title}</h1>
       <hr className="gold-rule" />
       <p><Link href={`/${lang}/start`}>{d.start.changePath}</Link></p>
+      {cfg.demoStore && <p className="notice calm small" data-testid="demo-note">{d.start.demoNote}</p>}
+      <p><Link href={`/${lang}/camera-preview`} target="_blank" data-testid="try-camera">{d.camera.preview.link}</Link></p>
 
       <fieldset style={{ marginTop: 22 }}>
         <legend>{d.start.ageTitle}</legend>

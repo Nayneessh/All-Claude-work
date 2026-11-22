@@ -34,7 +34,7 @@ npx tsx scripts/measure-fixtures.ts       # print the sharpness metric for the c
 
 ## Real-device checklist (tier 3)
 
-Do this on the staging URL. Run `/en/test/camera` first on each device and keep the copied result.
+Do this on the staging URL. Open `/en/camera-preview` first on each device (a practice run of the guided camera, nothing uploaded), then run `/en/test/camera` and keep the copied result.
 
 | # | Device | Check |
 | --- | --- | --- |

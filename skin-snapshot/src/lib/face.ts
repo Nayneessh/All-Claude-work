@@ -4,10 +4,14 @@
 import { evaluateFrame, faceBox, type CheckResult, type Pt } from '../core/pose';
 import { lightProblems, lumaStats, rgbaToGray, sharpnessNormalised, skinDetailRatio } from '../core/vision-metrics';
 import type { PhotoSlot } from '../core/types';
+import { platform } from './device';
 
 type FaceLandmarker = import('@mediapipe/tasks-vision').FaceLandmarker;
 let loading: Promise<FaceLandmarker> | null = null;
 let lastTs = 0;
+// The graphics-chip path is faster but is the least reliable on iPhones and some Android phones, so iPhones
+// start on the processor, and any device falls back to it if the live checks stop producing results.
+let cpuOnly = false;
 
 export function loadFaceModel(): Promise<FaceLandmarker> {
   if (!loading) {
@@ -22,15 +26,31 @@ export function loadFaceModel(): Promise<FaceLandmarker> {
           outputFacialTransformationMatrixes: true,
           outputFaceBlendshapes: false,
         });
+      const order: Array<'GPU' | 'CPU'> = cpuOnly || platform() === 'ios' ? ['CPU', 'GPU'] : ['GPU', 'CPU'];
       try {
-        return await make('GPU');
+        return await make(order[0]!);
       } catch {
-        return await make('CPU');
+        return await make(order[1]!);
       }
     })();
     loading.catch(() => (loading = null));
   }
   return loading;
+}
+
+/** Drops the loaded model and loads it again on the processor. Returns false when it was already there. */
+export async function reloadFaceModelOnCpu(): Promise<boolean> {
+  if (cpuOnly) return false;
+  cpuOnly = true;
+  const old = loading;
+  loading = null;
+  try {
+    (await old)?.close();
+  } catch {
+    /* it never loaded, nothing to close */
+  }
+  await loadFaceModel();
+  return true;
 }
 
 /** Start downloading the model early (for example while the visitor answers questions). */

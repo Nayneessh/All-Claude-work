@@ -143,8 +143,26 @@ describe('hosted defaults', () => {
     expect(c.retentionUnbookedHours).toBe(24);
     expect(c.signingSecret).toMatch(/^[0-9a-f]{64}$/);
     expect(loadConfig({ VERCEL: '1', NODE_ENV: 'production', APP_ENV: 'production', DATABASE_URL: 'x' }).env).toBe('production');
-    expect(loadConfig({ VERCEL: '1', NODE_ENV: 'production' }).signingSecret).toBe('');
+    expect(loadConfig({ VERCEL: '1', NODE_ENV: 'production', APP_ENV: 'production' }).signingSecret).toBe('');
     expect(loadConfig({ VERCEL: '1', NODE_ENV: 'production', SIGNING_SECRET: 'explicit', DATABASE_URL: 'x' }).signingSecret).toBe('explicit');
+  });
+  it('staging without a database runs on a temporary in-memory store; production never does', async () => {
+    const { loadConfig } = await import('../src/server/config');
+    const a = loadConfig({ VERCEL: '1', NODE_ENV: 'production' });
+    const b = loadConfig({ VERCEL: '1', NODE_ENV: 'production' });
+    expect(a.env).toBe('staging');
+    expect(a.demoStore).toBe(true);
+    expect(a.signingSecret).toMatch(/^[0-9a-f]{64}$/);
+    expect(a.signingSecret).not.toBe(b.signingSecret); // random per process, never a fixed value
+    expect(loadConfig({ VERCEL: '1', NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@h/db' }).demoStore).toBe(false);
+    const prod = loadConfig({ VERCEL: '1', NODE_ENV: 'production', APP_ENV: 'production' });
+    expect(prod.demoStore).toBe(false);
+    const { buildDeps, ConfigError } = Object.assign({}, await import('../src/server/deps'), await import('../src/server/config'));
+    await expect(buildDeps(prod)).rejects.toBeInstanceOf(ConfigError);
+  });
+  it('a missing staff sign-in setting does not stop the public flow; only console calls report it', async () => {
+    const { UnconfiguredAuth } = await import('../src/server/auth');
+    await expect(new UnconfiguredAuth().verify()).rejects.toThrow(/not configured/);
   });
   it('admins can check the AI connection; cosmetologists cannot', async () => {
     const h = await setup();

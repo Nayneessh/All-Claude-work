@@ -1,6 +1,7 @@
 # Known limitations
 
 1. **Real devices and skin tones are untested.** The camera logic was run in desktop Chromium with a simulated camera fed by a public-domain portrait and brightness-scaled versions of it. Android Chrome, iPhone Safari, a low-end phone, real webcams and real darker skin tones still need a human with the device. Use `/en/test/camera` and `docs/TESTING.md`.
+   The camera shows a live picture and takes still photos. It does **not** record video: only still photos are kept, by design (less data, easier to delete). Live checks use the graphics chip where reliable and the processor on iPhones; if they stop producing results the manual shutter keeps working.
 2. **Camera thresholds are unvalidated.** They were set from first principles and tuned on synthetic fixtures. Expect to adjust them after real-device runs.
 3. **Left and right 45-degree angle checks were verified with synthetic landmarks** and a frontal real face, not with a real head turned 45 degrees.
 4. **Beauty-filter detection is a heuristic.** It can miss a filter and can wrongly flag very smooth skin. The visitor can confirm "I am not using a filter".

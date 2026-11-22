@@ -6,7 +6,7 @@ import * as repo from '../data/repo';
 import { DEFAULT_RETENTION } from '../core/retention';
 import type { AssessedConfidence } from '../core/types';
 import { PostgresStore, S3Store, type ObjectStore } from '../storage';
-import { DevAuth, SupabaseAuth, type AuthProvider } from './auth';
+import { DevAuth, SupabaseAuth, UnconfiguredAuth, type AuthProvider } from './auth';
 import { OffBotCheck, PowBotCheck, TurnstileBotCheck, type BotCheck } from './botcheck';
 import { ConfigError, loadConfig, type Config } from './config';
 
@@ -58,6 +58,7 @@ export async function buildDeps(config: Config, overrides: Partial<Deps> = {}): 
   if (!db) {
     if (config.databaseUrl) db = postgresDb(config.databaseUrl);
     else if (!config.isProd) db = await pgliteDb(config.env === 'test' ? undefined : config.pgliteDir ?? '.data/pglite');
+    else if (config.demoStore) db = await pgliteDb(); // staging without a database: temporary, in memory
     else throw new ConfigError('DATABASE_URL is not set');
   }
   const store = overrides.store ?? (config.s3 ? new S3Store(config.s3) : new PostgresStore(db));
@@ -68,15 +69,14 @@ export async function buildDeps(config: Config, overrides: Partial<Deps> = {}): 
       : config.botcheck.kind === 'pow'
         ? new PowBotCheck(config.signingSecret, config.botcheck.difficulty, () => db!)
         : new OffBotCheck());
+  // Staff sign-in that is not configured must not stop the public flow: only console calls report it.
   const auth =
     overrides.auth ??
     (config.authProvider === 'dev'
       ? new DevAuth(config.signingSecret)
       : config.supabaseUrl && config.supabaseAnonKey
         ? new SupabaseAuth(config.supabaseUrl, config.supabaseAnonKey)
-        : (() => {
-            throw new ConfigError('Supabase URL and anon key are required for staff login');
-          })());
+        : new UnconfiguredAuth());
   return {
     config,
     db,

@@ -30,7 +30,7 @@ function InAppNotice({ onStay }: { onStay: () => void }) {
   );
 }
 
-function BlockedHelp({ why, onRetry }: { why: Unavailable; onRetry: () => void }) {
+export function BlockedHelp({ why, onRetry }: { why: Unavailable; onRetry: () => void }) {
   const { dict: d } = useLang();
   const steps = d.camera.blocked.steps;
   const fam = browserFamily();
@@ -45,11 +45,12 @@ function BlockedHelp({ why, onRetry }: { why: Unavailable; onRetry: () => void }
       </div>
     );
   }
-  const t = why === 'no_camera' ? d.camera.noCamera : d.camera.unsupported;
+  const t = why === 'no_camera' ? d.camera.noCamera : why === 'in_use' ? d.camera.inUse : d.camera.unsupported;
   return (
     <div className="card accent" data-testid="camera-unavailable">
       <h3>{t.title}</h3>
-      <p style={{ marginBottom: 0 }}>{t.lead}</p>
+      <p style={why === 'unsupported' ? { marginBottom: 0 } : undefined}>{t.lead}</p>
+      {why !== 'unsupported' && <button type="button" className="btn secondary small" onClick={onRetry}>{d.common.retry}</button>}
     </div>
   );
 }

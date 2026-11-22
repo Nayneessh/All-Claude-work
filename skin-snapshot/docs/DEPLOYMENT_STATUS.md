@@ -10,11 +10,20 @@
 | Deployment | `dpl_8t4hCLieJvPyXBTHJuwD3r3psYFA`, commit `5701873`, target production, state READY |
 | Deployment protection | Vercel Authentication applies to **preview** URLs only. The production alias is public |
 
-What a visitor can use today without a database: every public page in English and Hindi, the language switch, the camera self-test (`/en/test/camera`), camera help, system pages. The Test banner and search-engine blocking are active (hosted deployments default to staging).
+What a visitor can use without any setup: every public page in English and Hindi, the language switch, the **practice camera** (`/en/camera-preview`, linked from the path picker and the consent page; photos stay on the device), the camera self-test (`/en/test/camera`), camera help, and the whole assessment (path, consents, questionnaire, guided camera, upload, AI snapshot, booking message). The Test banner and search-engine blocking are active (hosted deployments default to staging).
 
-## Not yet working on the live URL (needs the database)
+## Temporary in-memory store (test link only)
 
-Starting a skin check, the questionnaire, photos, snapshot, booking and the console all need PostgreSQL. Until `DATABASE_URL` is set, the API answers `503 not_configured` and the pages show a plain error. This is the designed behaviour, not a crash.
+Until `DATABASE_URL` is set, a staging deployment runs on an **in-memory PostgreSQL** (PGlite) inside the server function, so the link can be tested end to end with nothing else set up (update of 22 Nov 2026, after the camera could not be reached because every API call returned `503 not_configured`).
+
+* Cases, photos and bookings live only in that server instance's memory. They are lost when the instance restarts, and two instances do not share them. If the page says the case is gone, start again. That is expected and the start page says so.
+* Production (`APP_ENV=production`) never does this. It refuses to start without `DATABASE_URL`.
+* The staff console still needs the Supabase variables (sign-in) and a real database (staff list, notes, audit log). It answers `503 not_configured` until both exist.
+* The AI step uses the Vercel AI Gateway with the deployment's own identity (no key). If the Gateway has no credits, the visitor sees the calm retry message and the camera and upload steps are unaffected.
+
+## Still needs the database (for a real, durable deployment)
+
+Anything that must survive a restart (cases, bookings, the console, the audit log, the daily purge of expired data) needs PostgreSQL via `DATABASE_URL`.
 
 ## Why it is not finished, and the exact remaining steps
 

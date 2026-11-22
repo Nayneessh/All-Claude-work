@@ -29,6 +29,11 @@ const config: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   serverExternalPackages: ['sharp', '@electric-sql/pglite', 'postgres'],
+  // The temporary in-memory database (staging without DATABASE_URL) reads the migration files and PGlite's
+  // WebAssembly bundle at runtime; make sure the hosted build ships them with the API function.
+  outputFileTracingIncludes: {
+    '/api/**': ['./supabase/migrations/**/*', './node_modules/@electric-sql/pglite/dist/**/*'],
+  },
   async headers() {
     const common = [
       { key: 'Content-Security-Policy', value: csp },

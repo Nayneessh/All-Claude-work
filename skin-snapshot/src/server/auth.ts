@@ -2,6 +2,7 @@
 // verified claims. Today that is Supabase Auth (open source, self-hostable). Replace the class to
 // move to another identity provider. The database only needs the claims: sub, email, aal.
 import type { StaffClaims } from '../data/db';
+import { ConfigError } from './config';
 import { hmacHex } from './signing';
 
 export interface AuthProvider {
@@ -66,5 +67,12 @@ export class DevAuth implements AuthProvider {
     } catch {
       return null;
     }
+  }
+}
+
+/** Used when staff sign-in is not set up yet. Public pages keep working; console calls say why they cannot. */
+export class UnconfiguredAuth implements AuthProvider {
+  async verify(): Promise<StaffClaims | null> {
+    throw new ConfigError('Staff sign-in is not configured (NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY).');
   }
 }

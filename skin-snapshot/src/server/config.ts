@@ -1,5 +1,5 @@
 // Single place where environment variables are read. Everything else receives a Config.
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import type { AiConfig } from '../ai/providers';
 import type { S3Config } from '../storage';
 
@@ -25,14 +25,21 @@ export interface Config {
   rateLimitScale: number;
   noindex: boolean;
   testBanner: boolean;
+  /**
+   * Staging with no DATABASE_URL: the app runs on a temporary in-memory database so the public flow can be tested.
+   * Data is lost whenever the server instance restarts and is not shared between instances. Never used in production.
+   */
+  demoStore: boolean;
 }
 
 /**
  * When SIGNING_SECRET is not provided, derive one from the database credential, which only this deployment knows.
  * Rotating the database password rotates the secret. Set SIGNING_SECRET explicitly in production.
  */
-function derivedSecret(env: Record<string, string | undefined>, isProd: boolean): string {
+function derivedSecret(env: Record<string, string | undefined>, isProd: boolean, demoStore: boolean): string {
   if (!isProd) return 'dev-only-signing-secret-change-me';
+  // Demo store: the data lives only in this process, so a secret that lives only in this process is enough.
+  if (demoStore) return randomBytes(32).toString('hex');
   if (!env.DATABASE_URL) return '';
   return createHash('sha256').update(`skin-snapshot-signing|${env.DATABASE_URL}`).digest('hex');
 }
@@ -46,6 +53,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     (env.APP_ENV as AppEnv | undefined) ??
     (env.VERCEL ? 'staging' : env.NODE_ENV === 'production' ? 'production' : env.NODE_ENV === 'test' ? 'test' : 'development');
   const isProd = appEnv === 'production' || appEnv === 'staging';
+  const demoStore = appEnv === 'staging' && !env.DATABASE_URL;
   const aiProvider = (env.AI_PROVIDER as AiConfig['provider'] | undefined) ?? (isProd ? 'openai-compatible' : 'mock');
   if (isProd && aiProvider === 'mock' && env.ALLOW_MOCK_AI !== '1') {
     throw new Error('AI_PROVIDER=mock is refused in staging/production. Set ALLOW_MOCK_AI=1 only for a deliberate demo.');
@@ -61,7 +69,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     isProd,
     databaseUrl: env.DATABASE_URL || undefined,
     pgliteDir: env.PGLITE_DIR || undefined,
-    signingSecret: env.SIGNING_SECRET || derivedSecret(env, isProd),
+    signingSecret: env.SIGNING_SECRET || derivedSecret(env, isProd, demoStore),
     supabaseUrl: env.NEXT_PUBLIC_SUPABASE_URL || env.SUPABASE_URL || undefined,
     supabaseAnonKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY || undefined,
     authProvider,
@@ -87,6 +95,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     rateLimitScale: num(env.RATE_LIMIT_SCALE) ?? 1,
     noindex: env.NOINDEX === '1' || appEnv === 'staging',
     testBanner: env.TEST_BANNER === '1' || appEnv === 'staging',
+    demoStore,
   };
 }
 

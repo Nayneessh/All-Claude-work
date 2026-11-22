@@ -82,7 +82,7 @@ export function createApp(getDeps: () => Promise<Deps>) {
     const d = deps(c);
     try {
       await d.db.query('select 1');
-      return c.json({ ok: true, db: 'ok', ai: d.ai.name, storage: d.store.kind, env: d.config.env });
+      return c.json({ ok: true, db: 'ok', ai: d.ai.name, storage: d.store.kind, env: d.config.env, ...(d.config.demoStore ? { demoStore: true } : {}) });
     } catch {
       return c.json({ ok: false, db: 'down' }, 503);
     }
@@ -92,7 +92,7 @@ export function createApp(getDeps: () => Promise<Deps>) {
     const d = deps(c);
     const s = await d.settings();
     return c.json({
-      testBanner: d.config.testBanner, botcheck: d.botcheck.kind, servicePromise: s.servicePromise, whatsappConfigured: Boolean(s.whatsappNumber),
+      testBanner: d.config.testBanner, demoStore: d.config.demoStore, botcheck: d.botcheck.kind, servicePromise: s.servicePromise, whatsappConfigured: Boolean(s.whatsappNumber),
       maintenance: s.maintenanceMode, unbookedHours: s.retentionUnbookedHours, closedDays: s.retentionClosedDays,
     });
   });
