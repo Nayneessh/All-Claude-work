@@ -1,0 +1,55 @@
+{
+  "name": "skin-snapshot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-assisted skin snapshot and cosmetologist WhatsApp handoff (Phase 1, working title)",
+  "engines": {
+    "node": ">=20.9"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "node scripts/copy-vision-assets.mjs && next build",
+    "start": "next start",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.test.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "serve:node": "tsx src/server/standalone.ts",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "export:source": "bash scripts/export-source.sh",
+    "postinstall": "node scripts/copy-vision-assets.mjs",
+    "build:e2e": "NEXT_PUBLIC_AUTH_MODE=dev TEST_BANNER=1 RETENTION_UNBOOKED_HOURS=24 APP_ENV=test next build"
+  },
+  "dependencies": {
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@fontsource/cormorant-garamond": "^5.3.0",
+    "@fontsource/noto-sans-devanagari": "^5.3.0",
+    "@fontsource/tiro-devanagari-hindi": "^5.3.0",
+    "@mediapipe/tasks-vision": "^0.10.21",
+    "@supabase/supabase-js": "^2.57.0",
+    "@vercel/oidc": "^3.0.0",
+    "aws4fetch": "^1.0.20",
+    "hono": "^4.9.0",
+    "libphonenumber-js": "^1.12.0",
+    "next": "^16.0.0",
+    "postgres": "^3.4.7",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "sharp": "^0.34.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.10.0",
+    "@electric-sql/pglite": "^0.3.0",
+    "@hono/node-server": "^1.19.0",
+    "@playwright/test": "1.63.0",
+    "@types/node": "^22.0.0",
+    "@types/qrcode": "^1.5.5",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
