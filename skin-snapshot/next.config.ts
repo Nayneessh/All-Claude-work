@@ -41,7 +41,7 @@ const config: NextConfig = {
     return [
       { source: '/:path*', headers: common },
       ...noindexPaths.map((source) => ({ source, headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow, noarchive' }, { key: 'Cache-Control', value: 'no-store' }] })),
-      ...(process.env.NOINDEX === '1' || process.env.APP_ENV === 'staging' ? [{ source: '/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] }] : []),
+      ...(process.env.NOINDEX === '1' || (process.env.APP_ENV ?? (process.env.VERCEL ? 'staging' : '')) === 'staging' ? [{ source: '/:path*', headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] }] : []),
       { source: '/vision/:path*', headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }] },
     ];
   },

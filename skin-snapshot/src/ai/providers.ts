@@ -41,11 +41,27 @@ async function post(url: string, headers: Record<string, string>, body: unknown,
   }
 }
 
+async function timed(fn: () => Promise<unknown>): Promise<{ ok: true; ms: number } | { ok: false; code: string }> {
+  const t = Date.now();
+  try {
+    await fn();
+    return { ok: true, ms: Date.now() - t };
+  } catch (e) {
+    return { ok: false, code: e instanceof ProviderError ? `${e.code}${e.status ? ':' + e.status : ''}` : 'unexpected' };
+  }
+}
+
 export class AnthropicProvider implements VisionProvider {
   readonly name = 'anthropic';
   constructor(private cfg: AiConfig) {}
   get model() {
     return this.cfg.model;
+  }
+  ping() {
+    return timed(async () => {
+      if (!this.cfg.apiKey) throw new ProviderError('not_configured', 'AI_API_KEY is not set');
+      await post(`${(this.cfg.baseUrl ?? 'https://api.anthropic.com').replace(/\/$/, '')}/v1/messages`, { 'x-api-key': this.cfg.apiKey, 'anthropic-version': '2023-06-01' }, { model: this.cfg.model, max_tokens: 8, messages: [{ role: 'user', content: 'Reply with: ok' }] }, 20_000);
+    });
   }
   async analyze(input: AnalyzeInput, signal?: AbortSignal): Promise<ProviderOutput> {
     if (!this.cfg.apiKey) throw new ProviderError('not_configured', 'AI_API_KEY is not set');
@@ -80,6 +96,12 @@ export class OpenAiCompatibleProvider implements VisionProvider {
   constructor(private cfg: AiConfig) {}
   get model() {
     return this.cfg.model;
+  }
+  ping() {
+    return timed(async () => {
+      const token = await this.bearer();
+      await post(`${(this.cfg.baseUrl ?? 'https://ai-gateway.vercel.sh/v1').replace(/\/$/, '')}/chat/completions`, { authorization: `Bearer ${token}` }, { model: this.cfg.model, max_tokens: 8, messages: [{ role: 'user', content: 'Reply with: ok' }] }, 20_000);
+    });
   }
   private async bearer(): Promise<string> {
     if (this.cfg.auth === 'vercel-oidc') {
@@ -128,6 +150,9 @@ export class OpenAiCompatibleProvider implements VisionProvider {
 export class MockProvider implements VisionProvider {
   readonly name = 'mock';
   readonly model = 'mock-v1';
+  async ping() {
+    return { ok: true as const, ms: 1 };
+  }
   async analyze(input: AnalyzeInput): Promise<ProviderOutput> {
     const scenario = input.scenario ?? 'normal';
     if (scenario === 'error') throw new ProviderError('http', 'mock provider failure', 503);

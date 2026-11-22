@@ -132,3 +132,25 @@ describe('Turnstile adapter (mocked network)', () => {
     }
   });
 });
+
+describe('hosted defaults', () => {
+  it('a Vercel deployment without APP_ENV is staging with 24-hour retention; production must be explicit; the signing secret can derive from the database credential', async () => {
+    const { loadConfig } = await import('../src/server/config');
+    const c = loadConfig({ VERCEL: '1', NODE_ENV: 'production', DATABASE_URL: 'postgresql://u:p@h/db' });
+    expect(c.env).toBe('staging');
+    expect(c.testBanner).toBe(true);
+    expect(c.noindex).toBe(true);
+    expect(c.retentionUnbookedHours).toBe(24);
+    expect(c.signingSecret).toMatch(/^[0-9a-f]{64}$/);
+    expect(loadConfig({ VERCEL: '1', NODE_ENV: 'production', APP_ENV: 'production', DATABASE_URL: 'x' }).env).toBe('production');
+    expect(loadConfig({ VERCEL: '1', NODE_ENV: 'production' }).signingSecret).toBe('');
+    expect(loadConfig({ VERCEL: '1', NODE_ENV: 'production', SIGNING_SECRET: 'explicit', DATABASE_URL: 'x' }).signingSecret).toBe('explicit');
+  });
+  it('admins can check the AI connection; cosmetologists cannot', async () => {
+    const h = await setup();
+    expect((await h.call('POST', '/api/console/ai-check', { staff: h.tokens.cosmo })).status).toBe(403);
+    const r = await h.call('POST', '/api/console/ai-check', { staff: h.tokens.admin });
+    expect(r.json).toMatchObject({ provider: 'mock', ok: true });
+    await h.db.close();
+  });
+});

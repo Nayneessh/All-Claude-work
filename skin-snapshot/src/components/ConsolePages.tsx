@@ -430,6 +430,11 @@ export function SettingsPage() {
           <span className="help">Lower is safer: more visitors are referred to a dermatologist. Changing this needs the dermatologist’s sign-off.</span></div>
       </div>
       <div className="card stack">
+        <h2 style={{ fontSize: '1.3rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>AI connection</h2>
+        <p className="help">Sends a one-line text request to the configured AI provider to confirm credentials, credits and reachability. No photos are involved.</p>
+        <div><button className="btn secondary small" data-testid="ai-check" onClick={async () => { try { const r = await capi('/api/console/ai-check', { method: 'POST' }); setMsg(r.ok ? `AI reachable: ${r.provider} ${r.model}, ${r.ms} ms.` : `AI check failed: ${r.provider} ${r.model}, ${r.code}.`); } catch { setMsg('AI check could not run.'); } }}>Test AI connection</button></div>
+      </div>
+      <div className="card stack">
         <h2 style={{ fontSize: '1.3rem', fontFamily: 'var(--font-body)', fontWeight: 700 }}>Staff</h2>
         <div className="table-wrap"><table><thead><tr><th>Email</th><th>Role</th><th>Active</th></tr></thead><tbody>
           {(staff.data ?? []).map((x) => <tr key={x.email}><td>{x.email}</td><td>{x.role}</td><td>{x.active ? 'Yes' : 'No'}</td></tr>)}

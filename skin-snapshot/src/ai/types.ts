@@ -26,6 +26,8 @@ export interface VisionProvider {
   readonly name: string;
   readonly model: string;
   analyze(input: AnalyzeInput, signal?: AbortSignal): Promise<ProviderOutput>;
+  /** Cheap connectivity and credential check with a text-only prompt. */
+  ping(): Promise<{ ok: true; ms: number } | { ok: false; code: string }>;
 }
 
 export class ProviderError extends Error {

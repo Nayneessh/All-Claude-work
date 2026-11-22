@@ -1,4 +1,5 @@
 // Single place where environment variables are read. Everything else receives a Config.
+import { createHash } from 'node:crypto';
 import type { AiConfig } from '../ai/providers';
 import type { S3Config } from '../storage';
 
@@ -26,10 +27,24 @@ export interface Config {
   testBanner: boolean;
 }
 
+/**
+ * When SIGNING_SECRET is not provided, derive one from the database credential, which only this deployment knows.
+ * Rotating the database password rotates the secret. Set SIGNING_SECRET explicitly in production.
+ */
+function derivedSecret(env: Record<string, string | undefined>, isProd: boolean): string {
+  if (!isProd) return 'dev-only-signing-secret-change-me';
+  if (!env.DATABASE_URL) return '';
+  return createHash('sha256').update(`skin-snapshot-signing|${env.DATABASE_URL}`).digest('hex');
+}
+
 const num = (v: string | undefined) => (v && !Number.isNaN(Number(v)) ? Number(v) : undefined);
 
 export function loadConfig(env: Record<string, string | undefined> = process.env): Config {
-  const appEnv = (env.APP_ENV as AppEnv | undefined) ?? (env.NODE_ENV === 'production' ? 'production' : env.NODE_ENV === 'test' ? 'test' : 'development');
+  // A hosted deployment without an explicit APP_ENV is treated as staging (test banner, no indexing, 24-hour retention).
+  // Production must say so: APP_ENV=production.
+  const appEnv =
+    (env.APP_ENV as AppEnv | undefined) ??
+    (env.VERCEL ? 'staging' : env.NODE_ENV === 'production' ? 'production' : env.NODE_ENV === 'test' ? 'test' : 'development');
   const isProd = appEnv === 'production' || appEnv === 'staging';
   const aiProvider = (env.AI_PROVIDER as AiConfig['provider'] | undefined) ?? (isProd ? 'openai-compatible' : 'mock');
   if (isProd && aiProvider === 'mock' && env.ALLOW_MOCK_AI !== '1') {
@@ -46,7 +61,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     isProd,
     databaseUrl: env.DATABASE_URL || undefined,
     pgliteDir: env.PGLITE_DIR || undefined,
-    signingSecret: env.SIGNING_SECRET ?? (isProd ? '' : 'dev-only-signing-secret-change-me'),
+    signingSecret: env.SIGNING_SECRET || derivedSecret(env, isProd),
     supabaseUrl: env.NEXT_PUBLIC_SUPABASE_URL || env.SUPABASE_URL || undefined,
     supabaseAnonKey: env.NEXT_PUBLIC_SUPABASE_ANON_KEY || env.SUPABASE_ANON_KEY || undefined,
     authProvider,
@@ -67,7 +82,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     },
     cronSecret: env.CRON_SECRET || undefined,
     whatsappNumber: env.WHATSAPP_NUMBER || undefined,
-    retentionUnbookedHours: num(env.RETENTION_UNBOOKED_HOURS),
+    retentionUnbookedHours: num(env.RETENTION_UNBOOKED_HOURS) ?? (appEnv === 'staging' ? 24 : undefined),
     retentionClosedDays: num(env.RETENTION_CLOSED_DAYS),
     rateLimitScale: num(env.RATE_LIMIT_SCALE) ?? 1,
     noindex: env.NOINDEX === '1' || appEnv === 'staging',

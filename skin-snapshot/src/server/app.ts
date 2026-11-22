@@ -104,7 +104,13 @@ export function createApp(getDeps: () => Promise<Deps>) {
   });
 
   // ---------------------------------------------------------------- visitor case
-  app.post('/cases', async (c) => c.json(await createCase(deps(c), await json(c), ctx(c)), 201));
+  app.post('/cases', async (c) => {
+    const d = deps(c);
+    const out = await createCase(d, await json(c), ctx(c));
+    // Housekeeping without a scheduler: now and then, remove expired cases. The daily cron does the same.
+    if (Math.random() < 0.2) await runPurge(d).catch(() => {});
+    return c.json(out, 201);
+  });
 
   app.get('/case', async (c) => {
     const { c: row } = await anyCase(c);
@@ -309,6 +315,14 @@ export function createApp(getDeps: () => Promise<Deps>) {
   app.delete('/console/templates/:id', async (c) => {
     await call(c, 'ss.console_delete_template($1::uuid)', [c.req.param('id')]);
     return c.body(null, 204);
+  });
+
+  app.post('/console/ai-check', async (c) => {
+    // Admin only: confirms the AI provider is reachable with the configured credentials.
+    const role = await call(c, 'ss.console_me()');
+    if (role.role !== 'admin') throw new HttpError(403, 'forbidden');
+    const d = deps(c);
+    return c.json({ provider: d.ai.name, model: d.ai.model, ...(await d.ai.ping()) });
   });
 
   app.get('/console/stats', async (c) => c.json(await call(c, 'ss.console_counts($1)', [Number(c.req.query('weeks') ?? 8)])));
