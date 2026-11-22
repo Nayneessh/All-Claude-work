@@ -338,6 +338,30 @@ begin
     'within_60s_pct', (select case when count(*) = 0 then null else round(100.0 * count(*) filter (where secs <= 60) / count(*), 1) end from d),
     'safety_leaks', (select count(*) from s where stopped and routine)
   ) into m;
+
+  -- Funnel (sessions reaching each step) and median seconds between consecutive steps.
+  with first_at as (
+    select session_id, name, min(at) as t from ss.events
+    where session_id is not null and at >= now() - interval '90 days'
+      and name in ('assessment_started', 'consent_completed', 'questionnaire_completed', 'camera_started', 'photos_completed', 'snapshot_ready', 'booking_requested')
+    group by session_id, name
+  ), steps(name, ord) as (
+    values ('assessment_started', 1), ('consent_completed', 2), ('questionnaire_completed', 3), ('camera_started', 4), ('photos_completed', 5), ('snapshot_ready', 6), ('booking_requested', 7)
+  ), reach as (
+    select st.name, st.ord, count(distinct f.session_id) as sessions from steps st left join first_at f on f.name = st.name group by st.name, st.ord
+  ), gaps as (
+    select a.name as from_step, b.name as to_step, extract(epoch from (b.t - a.t)) as secs
+    from first_at a join steps sa on sa.name = a.name
+    join steps sb on sb.ord = sa.ord + 1 join first_at b on b.name = sb.name and b.session_id = a.session_id
+    where b.t >= a.t
+  ), pair as (
+    select from_step, to_step, round((percentile_cont(0.5) within group (order by secs))::numeric, 1) as median_s, count(*) as n
+    from gaps group by from_step, to_step
+  )
+  select m || jsonb_build_object(
+    'funnel', (select coalesce(jsonb_agg(jsonb_build_object('step', name, 'sessions', sessions) order by ord), '[]'::jsonb) from reach),
+    'stage_seconds', (select coalesce(jsonb_agg(jsonb_build_object('from', from_step, 'to', to_step, 'median_s', median_s, 'n', n)), '[]'::jsonb) from pair)
+  ) into m;
   return jsonb_build_object('weeks', weeks, 'measures', m);
 end $$;
 

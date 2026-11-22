@@ -206,6 +206,12 @@ describe('analytics counts', () => {
     expect(Number(out.measures.snapshot_to_booking_pct)).toBeCloseTo(50, 1);
     expect(Number(out.measures.time_to_snapshot_p50_s)).toBeCloseTo(60, 0);
     expect(out.measures.safety_leaks).toBe(0);
+    const funnel = Object.fromEntries(out.measures.funnel.map((f: any) => [f.step, f.sessions]));
+    expect(funnel.camera_started).toBe(3);
+    expect(funnel.snapshot_ready).toBe(2);
+    expect(funnel.booking_requested).toBe(1);
+    const gap = out.measures.stage_seconds.find((g: any) => g.from === 'photos_completed' && g.to === 'snapshot_ready');
+    expect(Number(gap.median_s)).toBeCloseTo(60, 0);
     expect(out.weeks[0].flags).toBeGreaterThanOrEqual(1);
     await ev('s4', 'routine_shown', t(30));
     const out2 = await asClaims(db, admin(), async () => (await q(`select ss.console_counts(4) as c`)).rows[0].c);

@@ -17,7 +17,7 @@ export default defineConfig({
     timeout: 120_000,
     env: {
       APP_ENV: 'test', NODE_ENV: 'production', AI_PROVIDER: 'mock', AUTH_PROVIDER: 'dev', BOTCHECK: 'off', SIGNING_SECRET: 'e2e-signing-secret', CRON_SECRET: 'e2e-cron',
-      WHATSAPP_NUMBER: '+919876500000', NEXT_PUBLIC_AUTH_MODE: 'dev', TEST_BANNER: '1', RETENTION_UNBOOKED_HOURS: '24', NEXT_TELEMETRY_DISABLED: '1',
+      WHATSAPP_NUMBER: '+919876500000', NEXT_PUBLIC_AUTH_MODE: 'dev', TEST_BANNER: '1', RETENTION_UNBOOKED_HOURS: '24', NEXT_TELEMETRY_DISABLED: '1', RATE_LIMIT_SCALE: '100',
     },
   },
 });

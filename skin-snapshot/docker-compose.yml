@@ -1,0 +1,29 @@
+# Self-hosted stack: app + PostgreSQL. Fill the environment block (see .env.example), then:
+#   docker compose up -d db && docker compose run --rm migrate && docker compose up -d app
+services:
+  db:
+    image: postgres:17
+    environment: { POSTGRES_PASSWORD: change-me, POSTGRES_DB: skin }
+    volumes: [pgdata:/var/lib/postgresql/data]
+  migrate:
+    build: .
+    command: ["npx", "tsx", "scripts/migrate.ts"]
+    environment: { DATABASE_URL: "postgresql://postgres:change-me@db:5432/skin" }
+    depends_on: [db]
+  app:
+    build:
+      context: .
+      args: { NEXT_PUBLIC_SUPABASE_URL: "https://your-auth-host", NEXT_PUBLIC_SUPABASE_ANON_KEY: "your-publishable-key", APP_ENV: production }
+    ports: ["3000:3000"]
+    environment:
+      APP_ENV: production
+      DATABASE_URL: "postgresql://postgres:change-me@db:5432/skin"
+      SIGNING_SECRET: "generate-me"
+      CRON_SECRET: "generate-me"
+      AI_PROVIDER: anthropic
+      AI_MODEL: claude-sonnet-5-5
+      AI_API_KEY: "set-me"
+      NEXT_PUBLIC_SUPABASE_URL: "https://your-auth-host"
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: "your-publishable-key"
+    depends_on: [db]
+volumes: { pgdata: {} }

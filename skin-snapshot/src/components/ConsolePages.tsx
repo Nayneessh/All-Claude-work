@@ -35,7 +35,9 @@ export function QueuePage() {
   const [path, setPath] = useState('');
   const [status, setStatus] = useState('');
   const [flagged, setFlagged] = useState('');
-  const { data, err, reload } = useLoad<any[]>(() => capi(`/api/console/cases?path=${path}&status=${status}&flagged=${flagged}`), [path, status, flagged]);
+  const [find, setFind] = useState('');
+  const { data: all, err, reload } = useLoad<any[]>(() => capi(`/api/console/cases?path=${path}&status=${status}&flagged=${flagged}&limit=200`), [path, status, flagged]);
+  const data = all && find.trim() ? all.filter((c) => String(c.code).includes(find.trim().toUpperCase())) : all;
   useEffect(() => {
     const t = setInterval(reload, 30_000);
     return () => clearInterval(t);
@@ -48,6 +50,7 @@ export function QueuePage() {
         <label>Path <select value={path} onChange={(e) => setPath(e.target.value)} data-testid="f-path" style={{ width: 'auto' }}><option value="">All</option><option value="maintenance">Maintenance</option><option value="concerns">Concerns</option><option value="scars">Scars</option></select></label>
         <label>Status <select value={status} onChange={(e) => setStatus(e.target.value)} data-testid="f-status" style={{ width: 'auto' }}><option value="">All</option>{BOOKING_STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}</select></label>
         <label>Flags <select value={flagged} onChange={(e) => setFlagged(e.target.value)} data-testid="f-flag" style={{ width: 'auto' }}><option value="">All</option><option value="true">Flagged only</option><option value="false">Not flagged</option></select></label>
+        <label>Case code <input value={find} onChange={(e) => setFind(e.target.value)} placeholder="SS-…" style={{ width: 150, minHeight: 40 }} data-testid="f-code" /></label>
         <button className="btn secondary small" onClick={reload}>Refresh</button>
       </div>
       <Err err={err} />
@@ -356,6 +359,14 @@ export function StatsPage() {
             {row('Cases where a safety stop was followed by a routine', String(m.safety_leaks), 'Zero', m.safety_leaks === 0)}
           </tbody></table></div>
           <p className="help">Safety leaks are measured from events. The database and API also prevent a stopped case from receiving a routine at all. Answer-based flags are deterministic; image-based flags are a probabilistic check, so use “Report a missed safety flag” on any case where one was missed.</p>
+          <h2 style={{ fontSize: '1.4rem' }}>Funnel and time at each step (last 90 days)</h2>
+          <div className="table-wrap"><table data-testid="funnel"><thead><tr><th>Step</th><th>Visitors reaching it</th><th>From previous step</th><th>Median time from previous step</th></tr></thead><tbody>
+            {(m.funnel ?? []).map((f: any, i: number, arr: any[]) => {
+              const prev = i > 0 ? arr[i - 1].sessions : null;
+              const gap = (m.stage_seconds ?? []).find((g: any) => g.to === f.step);
+              return <tr key={f.step}><td>{f.step.replace(/_/g, ' ')}</td><td>{f.sessions}</td><td>{prev ? `${Math.round((100 * f.sessions) / prev)}%` : '—'}</td><td>{gap ? `${gap.median_s} s` : '—'}</td></tr>;
+            })}
+          </tbody></table></div>
           <h2 style={{ fontSize: '1.4rem' }}>By week</h2>
           <div className="table-wrap"><table data-testid="weekly"><thead><tr><th>Week of</th><th>Visitors</th><th>Paths picked</th><th>Started</th><th>Consented</th><th>Camera</th><th>Photos done</th><th>Snapshots</th><th>Bookings</th><th>Flags</th></tr></thead><tbody>
             {data.weeks.map((w: any) => <tr key={w.week_start}><td>{w.week_start}</td><td>{w.visitors}</td><td>{w.path_selected}</td><td>{w.assessments_started}</td><td>{w.consents_completed}</td><td>{w.camera_started}</td><td>{w.photos_completed}</td><td>{w.snapshots}</td><td>{w.bookings}</td><td>{w.flags}</td></tr>)}

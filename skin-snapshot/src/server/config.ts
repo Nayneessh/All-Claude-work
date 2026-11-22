@@ -20,6 +20,8 @@ export interface Config {
   whatsappNumber?: string;
   retentionUnbookedHours?: number;
   retentionClosedDays?: number;
+  /** Multiplies every rate limit. 1 in normal use; raised for load and browser tests. */
+  rateLimitScale: number;
   noindex: boolean;
   testBanner: boolean;
 }
@@ -67,6 +69,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     whatsappNumber: env.WHATSAPP_NUMBER || undefined,
     retentionUnbookedHours: num(env.RETENTION_UNBOOKED_HOURS),
     retentionClosedDays: num(env.RETENTION_CLOSED_DAYS),
+    rateLimitScale: num(env.RATE_LIMIT_SCALE) ?? 1,
     noindex: env.NOINDEX === '1' || appEnv === 'staging',
     testBanner: env.TEST_BANNER === '1' || appEnv === 'staging',
   };

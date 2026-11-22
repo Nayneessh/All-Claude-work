@@ -15,7 +15,34 @@ function leadingZeroBits(b: Uint8Array): number {
   return n;
 }
 
+declare global {
+  interface Window {
+    turnstile?: { render: (el: HTMLElement, o: Record<string, unknown>) => string; remove: (id: string) => void };
+  }
+}
+
+/** Cloudflare Turnstile, used only when BOTCHECK=turnstile and the site key is configured. */
+async function turnstileToken(siteKey: string): Promise<string | undefined> {
+  if (!window.turnstile) {
+    await new Promise<void>((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      s.async = true;
+      s.onload = () => res();
+      s.onerror = () => rej(new Error('turnstile failed to load'));
+      document.head.appendChild(s);
+    });
+  }
+  return new Promise((resolve) => {
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+    const id = window.turnstile!.render(el, { sitekey: siteKey, size: 'invisible', callback: (t: string) => { resolve(t); window.turnstile?.remove(id); el.remove(); }, 'error-callback': () => resolve(undefined) });
+  });
+}
+
 export async function getBotToken(): Promise<string | undefined> {
+  const site = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  if (site) return turnstileToken(site);
   const { challenge } = await api<{ challenge: { c: string; d: number; e: number; s: string } | null }>('/api/botcheck');
   if (!challenge) return undefined;
   const enc = new TextEncoder();

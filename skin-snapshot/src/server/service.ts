@@ -38,7 +38,7 @@ async function dailySaltHash(deps: Deps, value: string): Promise<string> {
 
 /** Returns false when the caller has exceeded the limit. */
 export async function allow(deps: Deps, key: string, max: number, windowSeconds: number): Promise<boolean> {
-  return (await repo.hitRateLimit(deps.db, key, windowSeconds)) <= max;
+  return (await repo.hitRateLimit(deps.db, key, windowSeconds)) <= Math.max(1, Math.ceil(max * deps.config.rateLimitScale));
 }
 
 async function emit(deps: Deps, c: CaseRow | null, name: string, props: Record<string, unknown> = {}) {
@@ -68,7 +68,7 @@ export async function createCase(deps: Deps, body: unknown, ctx: ReqCtx): Promis
   const p = createSchema.safeParse(body);
   if (!p.success) throw new HttpError(422, 'invalid_request', 'Age confirmation and the three required consents must be ticked.');
   const ipHash = await dailySaltHash(deps, ctx.ip);
-  if (!(await allow(deps, `create:${ipHash}`, 12, 3600))) throw new HttpError(429, 'rate_limited');
+  if (!(await allow(deps, `create:${ipHash}`, 40, 3600))) throw new HttpError(429, 'rate_limited');
   if (!(await deps.botcheck.verify(p.data.botToken, ctx.ip))) throw new HttpError(403, 'bot_check_failed');
 
   const token = generateToken();
@@ -367,7 +367,7 @@ export async function book(deps: Deps, c: CaseRow, body: unknown, ctx: ReqCtx, l
   const ipHash = await dailySaltHash(deps, ctx.ip);
   const numHash = await hmacHex(deps.config.signingSecret, `num|${e164}`);
   if (!(await deps.botcheck.verify(botToken as string | undefined, ctx.ip))) throw new HttpError(403, 'bot_check_failed');
-  if (!(await allow(deps, `book-ip:${ipHash}`, 10, 86400)) || !(await allow(deps, `book-num:${numHash}`, 5, 86400))) throw new HttpError(429, 'rate_limited');
+  if (!(await allow(deps, `book-ip:${ipHash}`, 30, 86400)) || !(await allow(deps, `book-num:${numHash}`, 5, 86400))) throw new HttpError(429, 'rate_limited');
   if (await repo.isNumberBlocked(deps.db, numHash)) throw new HttpError(429, 'rate_limited');
 
   await deps.db.tx(async (tx) => {
@@ -440,7 +440,7 @@ export async function recordEvent(deps: Deps, body: unknown, ctx: ReqCtx): Promi
   const p = eventSchema.safeParse(body);
   if (!p.success) throw new HttpError(422, 'invalid_request');
   const ipHash = await dailySaltHash(deps, ctx.ip);
-  if (!(await allow(deps, `event:${ipHash}`, 240, 3600))) throw new HttpError(429, 'rate_limited');
+  if (!(await allow(deps, `event:${ipHash}`, 600, 3600))) throw new HttpError(429, 'rate_limited');
   await repo.insertEvent(deps.db, { sessionId: p.data.sessionId, name: p.data.name, path: p.data.path ?? null, lang: p.data.lang ?? null, props: { ms: p.data.ms, reason: p.data.reason, device: p.data.device } });
 }
 

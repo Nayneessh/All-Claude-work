@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "regions": ["bom1"],
+  "crons": [{ "path": "/api/jobs/purge", "schedule": "0 3 * * *" }],
+  "functions": { "src/app/api/[[...route]]/route.ts": { "maxDuration": 60 } }
+}

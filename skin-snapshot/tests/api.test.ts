@@ -611,10 +611,10 @@ describe('bot protection (proof of work)', () => {
 
 describe('rate limits', () => {
   it('limits case creation per visitor address', async () => {
-    const t = await setup();
+    const t = await setup({ RATE_LIMIT_SCALE: '0.25' }); // 40 an hour becomes 10 so the test stays quick
     const body = { lang: 'en', path: 'maintenance', ageConfirmed: true, consents: { privacy: true, health: true, photos_ai: true } };
     let last = 0;
-    for (let i = 0; i < 14; i++) last = (await t.call('POST', '/api/cases', { body, headers: { 'x-forwarded-for': '203.0.113.9' } })).status;
+    for (let i = 0; i < 12; i++) last = (await t.call('POST', '/api/cases', { body, headers: { 'x-forwarded-for': '203.0.113.9' } })).status;
     expect(last).toBe(429);
     expect((await t.call('POST', '/api/cases', { body, headers: { 'x-forwarded-for': '203.0.113.10' } })).status).toBe(201);
     await t.db.close();
