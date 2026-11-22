@@ -11,7 +11,7 @@
 | `AI_PASSES` | Independent passes, default 2 |
 | `AI_TIMEOUT_MS` | Per-call timeout, default 50 000 |
 
-Candidate models (to be chosen by evaluation, not assumed): Claude Sonnet 5.5 as default, Opus 5.5 or Fable 5.2 for accuracy, Haiku 5.5 for a cheap pre-check. Any provider with image input and JSON-schema output can be added as one class in `src/ai/providers.ts`.
+Candidate models (to be chosen by evaluation, not assumed). Gateway ids, all listed with vision and structured output: `anthropic/claude-sonnet-5.5` (default), `anthropic/claude-opus-5.5` or `anthropic/claude-fable-5.2` for accuracy, `anthropic/claude-haiku-5.5` for a cheap pre-check. Direct Anthropic ids use dashes, e.g. `claude-sonnet-5-5`. Any provider with image input and JSON-schema output can be added as one class in `src/ai/providers.ts`.
 
 ## Pipeline (`src/server/analysis.ts`)
 
@@ -48,7 +48,7 @@ Photos (front, left, right, optional close-up), the chosen path, and whether mak
 
 ## Cost
 
-Not measured: no live model was called during the build. Rough size per case with 2 passes: about 14 000 input tokens (3 to 4 images plus prompt, twice) and about 3 000 output tokens. Multiply by your model's price. The analysis table records tokens per run, so real cost per case can be read from the database after the first live tests.
+Not measured: no live model was called during the build. Estimate per case with 2 passes: about 14 000 input tokens (3 to 4 images plus prompt, twice) and about 3 000 output tokens. At the Vercel AI Gateway list price for Claude Sonnet 5.5 (input $2 and output $10 per million tokens, catalogue read on 22 Nov 2026) that is roughly $0.06 per case, about ₹5, before any gateway or provider fees. Claude Haiku 5.5 is about 20 times cheaper per token and can be evaluated for a cheaper pass. The analysis table records tokens per run, so the real cost per case can be read from the database after the first live tests.
 
 ## Evaluation
 

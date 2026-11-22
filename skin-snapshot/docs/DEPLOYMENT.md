@@ -23,7 +23,7 @@ Copy `.env.example`. For staging:
 | `DATABASE_URL` | pooler connection string |
 | `SIGNING_SECRET`, `CRON_SECRET` | `openssl rand -base64 48` each |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | from Project Settings > API (publishable key) |
-| `AI_PROVIDER` / `AI_MODEL` / `AI_AUTH` | for the AI Gateway: `openai-compatible`, a gateway model id, `vercel-oidc`. For a key: `anthropic`, `claude-sonnet-5-5`, `bearer`, plus `AI_API_KEY` |
+| `AI_PROVIDER` / `AI_MODEL` / `AI_AUTH` | for the AI Gateway: `openai-compatible`, `anthropic/claude-sonnet-5.5`, `vercel-oidc` (the gateway needs credits on the Vercel team). For a key: `anthropic`, `claude-sonnet-5-5`, `bearer`, plus `AI_API_KEY` |
 | `RETENTION_UNBOOKED_HOURS` | `24` for staging |
 | `WHATSAPP_NUMBER` | the number for the Open WhatsApp button (or set it later in Console > Settings) |
 

@@ -52,7 +52,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     authProvider,
     ai: {
       provider: aiProvider,
-      model: env.AI_MODEL ?? (aiProvider === 'anthropic' ? 'claude-sonnet-5-5' : aiProvider === 'mock' ? 'mock-v1' : 'anthropic/claude-sonnet-4.5'),
+      model: env.AI_MODEL ?? (aiProvider === 'anthropic' ? 'claude-sonnet-5-5' : aiProvider === 'mock' ? 'mock-v1' : 'anthropic/claude-sonnet-5.5'),
       apiKey: env.AI_API_KEY || undefined,
       baseUrl: env.AI_BASE_URL || undefined,
       auth: (env.AI_AUTH as 'bearer' | 'vercel-oidc' | undefined) ?? (env.AI_API_KEY ? 'bearer' : 'vercel-oidc'),
