@@ -6,7 +6,7 @@
 4. **Beauty-filter detection is a heuristic.** It can miss a filter and can wrongly flag very smooth skin. The visitor can confirm "I am not using a filter".
 5. **No live AI model was called.** The Anthropic and OpenAI-compatible adapters, the prompt and the JSON schema were not exercised against a real model. Tests use the mock provider and fuzzed outputs. Accuracy, calibration of the confidence labels and the 60-second target are unmeasured.
 6. **Staff sign-in with Supabase Auth and authenticator enrolment was not exercised** (no Supabase project was available). Database rules were tested with simulated claims.
-7. **Not deployed:** see `docs/DEPLOYMENT_STATUS.md`.
+7. **Deployed without a database:** the public pages are live; the flow, booking and console need the steps in `docs/DEPLOYMENT_STATUS.md`.
 8. **The database-backed photo store** is for Phase 1 volumes. The S3 adapter is untested against a live bucket.
 9. **WhatsApp:** click-to-chat only. The cosmetologist's number must be entered (variable or Console > Settings); until then visitors are shown the message to copy.
 10. **Hindi is a careful draft** and needs a native reviewer. Fonts render through a Devanagari stack; mixed Latin and Devanagari text was checked visually only in Chromium.
