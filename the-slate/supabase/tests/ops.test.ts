@@ -75,7 +75,7 @@ describe('daily health check (read-only) — decisions on simulated infrastructu
     if (u.includes('/functions/v1/slate-parse')) return Response.json({ ai: false });
     return new Response('?', { status: 404 });
   }) as unknown as typeof fetch;
-  const by = (r: { name: string; status: string }[], n: string) => r.find((x) => x.name.startsWith(n))!;
+  const by = (r: { name: string; status: string; detail: string }[], n: string) => r.find((x) => x.name.startsWith(n))!;
 
   it('healthy infrastructure → everything passes, optional pieces are reported as skipped/warned (never hidden)', async () => {
     const r = await runChecks(ENV, make()); const s = summarize(r);
