@@ -7,12 +7,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:friends": "tsc --noEmit && VITE_EDITION=friends vite build --outDir dist-friends && node scripts/check-friends-bundle.mjs dist-friends",
     "preview": "vite preview --port 4173 --strictPort",
+    "preview:friends": "vite preview --outDir dist-friends --port 4174 --strictPort",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:friends": "playwright test -c playwright.friends.config.ts",
     "gen:seed": "tsx scripts/gen-seed-sql.ts",
     "cap:sync": "cap sync android"
   },

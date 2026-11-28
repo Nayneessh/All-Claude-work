@@ -4,7 +4,7 @@ import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 
 export default tseslint.config(
-  { ignores: ['dist', 'android', 'node_modules', 'playwright-report', 'test-results', '.release', 'scripts/**/*.js'] },
+  { ignores: ['dist', 'dist-owner', 'dist-friends', 'android', 'node_modules', 'playwright-report', 'playwright-report-friends', 'test-results', '.release', 'scripts/**/*.js'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   { files: ['scripts/**/*.mjs'], languageOptions: { ecmaVersion: 2022, sourceType: 'module', globals: { ...globals.node, ...globals.browser } } }, // page.evaluate callbacks run in the browser

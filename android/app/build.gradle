@@ -3,12 +3,15 @@ apply plugin: 'com.android.application'
 // Version is injected by CI (-PmgVersionName / -PmgVersionCode); see docs/ANDROID_RELEASE.md
 def mgVersionCode = Integer.parseInt((project.findProperty('mgVersionCode') ?: '1').toString())
 def mgVersionName = (project.findProperty('mgVersionName') ?: '1.0.0').toString()
+// The "friends" edition is built with -PmgAppIdSuffix=.friends so it installs as its own app (own data, own signing key)
+// and can never replace or touch the owner's installed app. Default: no suffix.
+def mgAppIdSuffix = (project.findProperty('mgAppIdSuffix') ?: '').toString()
 
 android {
     namespace = "com.monstergains.app"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.monstergains.app"
+        applicationId "com.monstergains.app" + mgAppIdSuffix
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode mgVersionCode

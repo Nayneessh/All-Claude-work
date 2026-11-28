@@ -4,8 +4,14 @@ on:
   workflow_dispatch:
     inputs:
       apk_branch:
-        description: 'Branch holding the APK(s): release (signed, final) or ci-artifacts (unsigned CI build)'
+        description: 'Branch holding the APK(s): release (signed, final), release-friends (signed friends edition) or a ci-artifacts branch (unsigned CI build)'
         default: release
+      package:
+        description: 'Application id the APK must have (friends edition: com.monstergains.app.friends)'
+        default: com.monstergains.app
+      edition:
+        description: 'owner or friends (friends additionally asserts the clean start: no routine anywhere on screen)'
+        default: owner
 
 permissions:
   contents: read
@@ -27,6 +33,7 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - name: APK metadata, signature, signer fingerprint, alignment
+        env: { MG_PKG: '${{ inputs.package }}' }
         run: bash scripts/android/inspect-apk.sh apks
       - name: Prepare the update-in-place pair (previous and new debug builds signed with one throwaway key)
         run: |
@@ -45,6 +52,9 @@ jobs:
           sudo udevadm control --reload-rules && sudo udevadm trigger --name-match=kvm
       - name: Emulator — install, launch, drive, real keyboard, kill/relaunch, update in place
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          MG_PKG: ${{ inputs.package }}
+          MG_EDITION: ${{ inputs.edition }}
         with:
           api-level: ${{ matrix.api }}
           arch: x86_64

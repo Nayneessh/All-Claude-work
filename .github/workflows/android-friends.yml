@@ -1,0 +1,80 @@
+name: Android build (friends edition)
+
+# Builds the "friends" edition: same app and same Supabase project, but it starts empty — the author's own routine is not in the bundle.
+# Installs as its own app (com.monstergains.app.friends), so it never touches the owner's installed app or data.
+# Manual only: run it when a new friends APK is needed. The web-level journeys for this edition run on every push in ci.yml.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-friends-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - name: Android SDK (preinstalled on the runner) — accept licences, ensure platform/build-tools
+        run: |
+          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDKM="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$SDKM" ] || SDKM="$(ls -d $ANDROID_HOME/cmdline-tools/*/bin/sdkmanager | head -1)"
+          yes | "$SDKM" --licenses > /dev/null || true
+          "$SDKM" "platforms;android-36" "build-tools;36.0.0" > /dev/null
+          echo "ANDROID_HOME=$ANDROID_HOME" >> "$GITHUB_ENV"
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - name: Build the friends web bundle and prove the owner's routine is not in it
+        run: npm run build:friends && rm -rf dist && cp -r dist-friends dist
+      - name: Sync Capacitor
+        run: npx cap sync android
+      - name: Assemble release + debug APKs (own application id)
+        working-directory: android
+        run: |
+          VN=$(node -p "require('../package.json').version")
+          ./gradlew --no-daemon assembleRelease assembleDebug -PmgAppIdSuffix=.friends -PmgVersionName="$VN" -PmgVersionCode="${{ github.run_number }}"
+      - name: Collect outputs
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/*.apk out/
+          cp android/app/build/outputs/apk/debug/*.apk out/
+          ls -la out
+      - name: Verify the APKs — application id, and no trace of the owner's routine inside either one
+        run: |
+          AAPT2="$(ls -d $ANDROID_HOME/build-tools/*/aapt2 | sort -V | tail -1)"
+          for apk in out/app-release-unsigned.apk out/app-debug.apk; do
+            "$AAPT2" dump badging "$apk" | grep -q "package: name='com.monstergains.app.friends'" || { echo "wrong application id in $apk"; exit 1; }
+            rm -rf /tmp/apkx && mkdir -p /tmp/apkx && unzip -q "$apk" 'assets/public/*' -d /tmp/apkx
+            node scripts/check-friends-bundle.mjs /tmp/apkx/assets/public
+          done
+          "$AAPT2" dump badging out/app-release-unsigned.apk | head -3
+      - uses: actions/upload-artifact@v4
+        with:
+          name: monster-gains-friends-apks
+          path: out/*.apk
+          retention-days: 30
+      - name: Publish build output to the ci-artifacts-friends branch (clean, single-commit)
+        env:
+          GH_PUSH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          PUB="$RUNNER_TEMP/pub"
+          mkdir -p "$PUB"
+          cp out/*.apk "$PUB/"
+          echo "${{ github.sha }}" > "$PUB/SOURCE_SHA"
+          cd "$PUB"
+          git init -q -b ci-artifacts-friends
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "CI build (friends edition) of ${{ github.sha }} (run ${{ github.run_number }})"
+          git push -q -f "https://x-access-token:${GH_PUSH_TOKEN}@github.com/${{ github.repository }}.git" ci-artifacts-friends

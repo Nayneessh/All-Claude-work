@@ -1,9 +1,12 @@
 node_modules/
 dist/
+dist-owner/
+dist-friends/
 .env.local
 .env.*.local
 *.log
 playwright-report/
+playwright-report-friends/
 test-results/
 coverage/
 .DS_Store

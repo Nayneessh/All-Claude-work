@@ -8,7 +8,8 @@ import { _android as android } from '@playwright/test';
 
 const OUT = process.argv[2] ?? 'out';
 const MODE = process.argv[3] ?? 'full';
-const PKG = 'com.monstergains.app';
+const PKG = process.env.MG_PKG ?? 'com.monstergains.app';
+const EDITION = process.env.MG_EDITION ?? 'owner'; // 'friends' = clean start: no routine is offered, loaded or on screen
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const check = (cond, msg) => { if (!cond) throw new Error(`CHECK FAILED: ${msg}`); console.log(`ok  ${msg}`); };
 
@@ -28,8 +29,14 @@ async function onboard(page) {
   await page.getByRole('button', { name: 'Next' }).waitFor({ timeout: 30_000 });
   await page.getByRole('button', { name: 'Next' }).click();
   await page.getByRole('button', { name: 'Next' }).click();
+  if (EDITION === 'friends') await page.getByText('Start with a clean slate').waitFor({ timeout: 10_000 });
   await page.getByRole('button', { name: 'Start training' }).click();
   await page.getByRole('button', { name: 'Quick workout' }).first().waitFor({ timeout: 20_000 });
+  if (EDITION === 'friends') {
+    await page.getByText('No program yet').first().waitFor({ timeout: 10_000 });
+    const text = await page.locator('body').innerText();
+    check(!/Arms First|Chest = Back|\bv6\b/.test(text), 'friends edition: nothing from the owner\'s routine is on screen after onboarding');
+  }
 }
 
 /** A quick (unplanned) workout works on any weekday/date, so these checks never depend on the routine's schedule. */

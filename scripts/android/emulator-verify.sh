@@ -5,7 +5,8 @@
 # 3) real soft keyboard + real touch: typing in sheets and set rows must never lose focus or flicker the keyboard;
 # 4) update in place: old build → log data → install the new build over it → the data is still there.
 set -euo pipefail
-DIR="${1:?apk dir}"; UPG="${2:-}"; PKG=com.monstergains.app; OUT=out; mkdir -p "$OUT"
+DIR="${1:?apk dir}"; UPG="${2:-}"; PKG="${MG_PKG:-com.monstergains.app}"; OUT=out; mkdir -p "$OUT"
+export MG_PKG="$PKG" MG_EDITION="${MG_EDITION:-owner}"   # the friends edition is com.monstergains.app.friends and starts without the owner's routine
 REL="$(ls "$DIR"/MonsterGains-*.apk | grep -vi debug | sort -V | tail -1)"; DBG="$DIR/test/MonsterGains-debug.apk"
 shot() { adb exec-out screencap -p > "$OUT/$1.png"; }
 crashes() { adb logcat -d | grep -E "FATAL EXCEPTION|ANR in $PKG|Process: $PKG.*died" || true; }

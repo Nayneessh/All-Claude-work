@@ -8,6 +8,8 @@ APK="$(ls "$DIR"/MonsterGains-*.apk | grep -vi debug | sort -V | tail -1)"
 echo "APK: $APK ($(stat -c %s "$APK") bytes)"
 echo "== aapt2 badging"; BADGE="$("$BT/aapt2" dump badging "$APK" | grep -E "^(package|minSdkVersion|sdkVersion|targetSdkVersion|application-label:|launchable-activity)")"; echo "$BADGE" | sed 's/^/  /'
 echo "::notice title=APK badging::$(echo "$BADGE" | tr '\n' '|')"
+# MG_PKG (optional): the application id this APK must have — the friends edition is com.monstergains.app.friends
+if [ -n "${MG_PKG:-}" ]; then echo "$BADGE" | grep -q "^package: name='$MG_PKG'" || { echo "application id mismatch: expected $MG_PKG"; exit 1; }; echo "application id is $MG_PKG"; fi
 echo "== apksigner verify"
 "$BT/apksigner" verify --verbose --print-certs "$APK" | tee /tmp/apksigner.txt | sed 's/^/  /'
 grep -q "Verified using v2 scheme (APK Signature Scheme v2): true" /tmp/apksigner.txt || grep -q "Verified using v3 scheme.*true" /tmp/apksigner.txt || { echo "no v2/v3 signature"; exit 1; }

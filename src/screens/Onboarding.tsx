@@ -1,14 +1,22 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Banner, Button, Chip, Field, Seg, Toggle, useUi } from '@/ui/kit';
 import { useApp } from '@/app/AppContext';
 import { createProgram, listPrograms } from '@/data/repo/programs';
-import { ROUTINE_START_DATE, routineV6Program, routineV6Tree } from '@/data/seed/routineV6';
 import { fmtDate, errMsg } from '@/ui/format';
 import type { Unit } from '@/domain/types';
 
 const GOALS = ['Hypertrophy', 'Strength', 'Fat loss', 'General fitness', 'Endurance', 'Athletic performance', 'Mobility'];
 const EQUIP = ['Barbell', 'Dumbbell', 'Cable', 'Machines', 'Bodyweight', 'Bands', 'Kettlebell'];
+
+/**
+ * Build-time edition switch. The "friends" edition is built with VITE_EDITION=friends and starts with a clean slate.
+ * The author's own routine lives in '@/data/seed/routineV6' and is only ever imported behind this constant, so Vite replaces it
+ * with a literal and drops every branch that mentions the routine — the data is not merely hidden, it is not in the bundle.
+ * scripts/check-friends-bundle.mjs fails the build if any of it is found.
+ */
+const OWNER_ROUTINE = import.meta.env.VITE_EDITION !== 'friends';
+type RoutineSeed = typeof import('@/data/seed/routineV6');
 
 export function Onboarding() {
   const nav = useNavigate();
@@ -22,8 +30,10 @@ export function Onboarding() {
   const [equip, setEquip] = useState<string[]>(profile?.equipment ?? []);
   const [bodyweight, setBodyweight] = useState('');
   const [loadRoutine, setLoadRoutine] = useState(true);
+  const [seed, setSeed] = useState<RoutineSeed | null>(null);
   const [busy, setBusy] = useState(false);
   const toggle = (arr: string[], v: string, set: (x: string[]) => void): void => set(arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
+  useEffect(() => { if (import.meta.env.VITE_EDITION !== 'friends') void import('@/data/seed/routineV6').then(setSeed); }, []);
 
   async function finish(): Promise<void> {
     setBusy(true);
@@ -31,9 +41,12 @@ export function Onboarding() {
       const bw = Number(bodyweight.replace(',', '.'));
       const baselineKg = bodyweight && Number.isFinite(bw) && bw > 0 ? (units === 'lb' ? Math.round(bw * 0.45359237 * 100) / 100 : bw) : null;
       await saveProfile({ display_name: name.trim() || null, units, experience, goals, equipment: equip, onboarding_done: true, ...(baselineKg ? { baseline: { bodyweight_kg: baselineKg } } : {}) });
-      if (loadRoutine && (await listPrograms({ includeArchived: true })).length === 0) {
-        await createProgram(routineV6Program(), routineV6Tree(), today);
-        ui.toast('Your v6 routine is loaded', { tone: 'ok' });
+      if (import.meta.env.VITE_EDITION !== 'friends') {
+        if (loadRoutine && (await listPrograms({ includeArchived: true })).length === 0) {
+          const s = seed ?? (await import('@/data/seed/routineV6'));
+          await createProgram(s.routineV6Program(), s.routineV6Tree(), today);
+          ui.toast('Your v6 routine is loaded', { tone: 'ok' });
+        }
       }
       nav('/', { replace: true });
     } catch (e) { ui.toast(errMsg(e), { tone: 'err' }); } finally { setBusy(false); }
@@ -65,10 +78,17 @@ export function Onboarding() {
       {step === 2 && (
         <div className="col mt-5">
           <h2>Your program</h2>
-          <div className="card hl">
-            <div className="row-flex between"><div><div className="strong">v6 · Arms First · Chest = Back</div><div className="small dim">Mon–Sat · 98 sets/week · starts {fmtDate(ROUTINE_START_DATE)}</div></div><Toggle on={loadRoutine} onChange={setLoadRoutine} label="Load my v6 routine" /></div>
-            <p className="small dim mt-3">Your routine from the sheet, ready to run — every exercise, set, rep range, RIR, tempo, rest and last-set technique. Edit anything later.</p>
-          </div>
+          {OWNER_ROUTINE ? (
+            <div className="card hl">
+              <div className="row-flex between"><div><div className="strong">v6 · Arms First · Chest = Back</div><div className="small dim">Mon–Sat · 98 sets/week · starts {seed ? fmtDate(seed.ROUTINE_START_DATE) : '…'}</div></div><Toggle on={loadRoutine} onChange={setLoadRoutine} label="Load my v6 routine" /></div>
+              <p className="small dim mt-3">Your routine from the sheet, ready to run — every exercise, set, rep range, RIR, tempo, rest and last-set technique. Edit anything later.</p>
+            </div>
+          ) : (
+            <div className="card hl">
+              <div className="strong">Start with a clean slate</div>
+              <p className="small dim mt-3">Nothing is pre-loaded. Build your own program from the built-in exercise library — and add your own exercises to it — or tap “Quick workout” on the Today screen and just log as you go. Rearrange, edit or replace anything, any time.</p>
+            </div>
+          )}
           {auth.status !== 'signed_in' && (
             <Banner icon="cloud" action={<Button small variant="soft" onClick={() => nav('/auth', { state: { from: '/onboarding' } })}>Sign in</Button>}>
               <strong>Back up your progress.</strong> Create a free account so your history can never be lost with the phone. You can do this later.
