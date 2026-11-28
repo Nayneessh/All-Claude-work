@@ -68,14 +68,17 @@ const imeShown = async () => {
 };
 
 async function calibrate(page) {
-  // Where is the WebView on the screen? Tap a known screen point and read back where the page saw the touch.
-  await page.evaluate(() => { window.__cal = null; document.addEventListener('pointerdown', (e) => { window.__cal = { x: e.clientX, y: e.clientY }; }, { capture: true, once: true }); });
-  await device.shell('input tap 540 1500');
-  await sleep(600);
-  const cal = await page.evaluate(() => window.__cal);
+  // Where is the WebView on the screen? Read it from the accessibility tree. (An earlier version tapped a fixed point and read back where the page
+  // saw the touch — but that tap lands on whatever the screen shows there, e.g. a "Start workout" button on a day with a planned workout.)
   const dpr = await page.evaluate(() => window.devicePixelRatio);
-  if (!cal) throw new Error('calibration tap was not seen by the page');
-  return { dpr, ox: 540 - cal.x * dpr, oy: 1500 - cal.y * dpr };
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await device.shell('uiautomator dump /sdcard/ui-cal.xml');
+    const xml = (await device.shell('cat /sdcard/ui-cal.xml')).toString();
+    const m = xml.match(/class="android\.webkit\.WebView"[^>]*?bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"/);
+    if (m) return { dpr, ox: Number(m[1]), oy: Number(m[2]) };
+    await sleep(1500);
+  }
+  throw new Error('could not find the WebView in the accessibility tree to calibrate touch coordinates');
 }
 async function realTap(page, cal, locator) {
   // a real finger can only hit what is on the screen: bring the element to the middle of the visible area first
@@ -134,22 +137,33 @@ async function keyboardStability(page, cal, label, openByTapping, text) {
   else console.log(`   [${label}] note: this emulator never reported the soft keyboard as shown; only focus stability was asserted`);
 }
 
-// ── scenarios ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-if (MODE === 'full' || MODE === 'seed' || MODE === 'keyboard') await device.shell(`pm clear ${PKG}`);
-let page = await launch();
-if (MODE === 'full' || MODE === 'seed' || MODE === 'keyboard') {
-  // right after "pm clear" the system can restart the app while we are attaching; one relaunch is what a user would do too
+/** Fresh-install onboarding. A cold WebView on a busy CI emulator is occasionally not ready (or is restarted by the system right after "pm clear"):
+ *  one retry from a wiped app is what a user would do, it is logged loudly, and a deterministic fault still fails on the second attempt. */
+async function freshOnboard() {
   for (let attempt = 1; ; attempt++) {
-    try { await page.getByRole('button', { name: 'Next' }).waitFor({ timeout: 30_000 }); break; } catch (e) {
+    try { await onboard(page); return; } catch (e) {
+      await device.screenshot({ path: `${OUT}/98-onboarding-attempt${attempt}-${MODE}.png` }).catch(() => {});
       if (attempt === 2) throw e;
-      console.log(`   first screen not reachable on attempt 1 (${String(e.message).split('\n')[0]}) — relaunching once`);
-      await device.shell(`am force-stop ${PKG}`); await sleep(2000); page = await launch();
+      console.log(`   onboarding attempt 1 failed (${String(e.message).split('\n')[0]}) — wiping app data and trying once more`);
+      await device.shell(`pm clear ${PKG}`); await sleep(1500); page = await launch();
     }
   }
 }
 
+// ── scenarios ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+if (MODE === 'full' || MODE === 'seed' || MODE === 'keyboard') await device.shell(`pm clear ${PKG}`);
+let page = await launch();
+process.on('uncaughtException', (e) => { // evidence for a failed run: what was on screen
+  void (async () => {
+    await device.screenshot({ path: `${OUT}/99-failure-${MODE}.png` }).catch(() => {});
+    const t = await page.locator('body').innerText({ timeout: 3000 }).catch(() => '(page not readable)');
+    console.error(`page text at failure: ${String(t).replace(/\s+/g, ' ').slice(0, 500)}`);
+    console.error(e);
+    process.exit(1);
+  })();
+});
 if (MODE === 'full') {
-  await onboard(page);
+  await freshOnboard();
   check(true, 'first launch inside Android WebView shows onboarding and reaches Today');
   await device.screenshot({ path: `${OUT}/03-webview-today.png` });
   await quickWorkoutWithSet(page);
@@ -165,7 +179,7 @@ if (MODE === 'full') {
 }
 
 if (MODE === 'seed') {
-  await onboard(page);
+  await freshOnboard();
   await quickWorkoutWithSet(page);
   check(true, 'seeded: onboarding done, quick workout with one logged set (reps 10)');
   await sleep(1500);
@@ -178,7 +192,7 @@ if (MODE === 'verify') {
 
 if (MODE === 'keyboard') {
   await device.shell('settings put secure show_ime_with_hard_keyboard 1');
-  await onboard(page);
+  await freshOnboard();
   const cal = await calibrate(page);
   console.log(`calibration: dpr=${cal.dpr} offset=(${Math.round(cal.ox)},${Math.round(cal.oy)})`);
   await page.getByRole('button', { name: 'Quick workout' }).first().click();
