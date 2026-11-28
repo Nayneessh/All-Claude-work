@@ -13,9 +13,9 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "allowImportingTsExtensions": false,
+    "allowImportingTsExtensions": true,
     "noEmit": true,
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "supabase/tests", "e2e", "vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "supabase/tests", "supabase/functions/_shared", "supabase/functions/notify/logic.ts", "supabase/functions/slate-parse/validate.ts", "e2e", "vite.config.ts", "vitest.config.ts"]
 }

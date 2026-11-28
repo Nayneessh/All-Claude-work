@@ -1,0 +1,17 @@
+# Supabase CLI configuration (used by `supabase db push`, `supabase functions deploy`, local `supabase start`).
+# project_id is a local label; link a real project with: supabase link --project-ref <ref>
+project_id = "the-slate"
+
+[api]
+enabled = true
+schemas = ["public", "storage"]
+
+# The edge functions authenticate themselves (signed-in user JWT, or the cron secret), so the gateway JWT check is off.
+[functions.notify]
+verify_jwt = false
+[functions.backup]
+verify_jwt = false
+[functions.slate-parse]
+verify_jwt = false
+[functions.send-reminders]
+verify_jwt = false

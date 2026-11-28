@@ -1,0 +1,76 @@
+name: Slate CI
+
+# Verifies THE SLATE (folder the-slate/). Independent of every other project in this repository.
+on:
+  push:
+    paths: ['the-slate/**', '.github/workflows/slate-*.yml']
+  pull_request:
+    paths: ['the-slate/**', '.github/workflows/slate-*.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: slate-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: the-slate
+
+jobs:
+  test:
+    name: Typecheck, unit + database tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: the-slate/package-lock.json }
+      - run: npm ci
+      - name: Shared server code is in sync with the app
+        run: node scripts/sync-edge-shared.mjs --check
+      - run: npm run typecheck
+      - name: Unit + database (real Postgres via PGlite) + restore + health-check tests
+        run: npm test
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+
+  e2e:
+    name: End-to-end (real browser, real Supabase, isolated test user)
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+      VITE_SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        if: ${{ env.E2E_EMAIL != '' }}
+      - uses: actions/setup-node@v4
+        if: ${{ env.E2E_EMAIL != '' }}
+        with: { node-version: 22, cache: npm, cache-dependency-path: the-slate/package-lock.json }
+      - name: Run E2E (skipped when no E2E_EMAIL secret is configured)
+        if: ${{ env.E2E_EMAIL != '' }}
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+          npm run build
+          node scripts/e2e-cleanup.mjs
+          npx playwright test --trace off
+          node scripts/e2e-cleanup.mjs
+      - name: Production security smoke test
+        if: ${{ env.E2E_EMAIL != '' }}
+        run: node scripts/smoke/prod-isolation.mjs
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+      - uses: actions/upload-artifact@v4
+        if: ${{ failure() && env.E2E_EMAIL != '' }}
+        with: { name: e2e-failures, path: the-slate/test-results/, retention-days: 7 }

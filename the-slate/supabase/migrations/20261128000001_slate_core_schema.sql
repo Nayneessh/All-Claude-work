@@ -192,7 +192,8 @@ create table public.notifications (
   created_at timestamptz not null default now(),
   read_at timestamptz
 );
-create unique index notifications_dedupe_uq on public.notifications (user_id, dedupe_key) where dedupe_key is not null;
+-- Full (not partial) unique index: ON CONFLICT (user_id, dedupe_key) can only infer a non-partial index; NULL keys remain distinct, so unkeyed rows are unaffected.
+create unique index notifications_dedupe_uq on public.notifications (user_id, dedupe_key);
 create index notifications_user_time_idx on public.notifications (user_id, created_at desc);
 
 create table public.sop_documents (

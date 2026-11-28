@@ -1,0 +1,45 @@
+name: Slate off-platform backup (optional)
+
+# A second, independent copy of the database OUTSIDE Supabase: encrypted pg_dump pushed to an S3-compatible bucket you own
+# (AWS S3, Cloudflare R2, Backblaze B2, MinIO …). Does nothing until the secrets below exist.
+# Required secrets: SUPABASE_DB_URL (direct/pooler connection string), BACKUP_PASSPHRASE (long random), OFFSITE_S3_BUCKET,
+#                   AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, and optionally OFFSITE_S3_ENDPOINT (for R2/B2/MinIO).
+# The dump is encrypted before it leaves the runner and is NEVER stored as a GitHub artifact (this repository is public).
+on:
+  schedule:
+    - cron: '0 21 * * 0'   # Sundays 02:30 IST
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DB: ${{ secrets.SUPABASE_DB_URL }}
+      PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+      BUCKET: ${{ secrets.OFFSITE_S3_BUCKET }}
+      ENDPOINT: ${{ secrets.OFFSITE_S3_ENDPOINT }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+    steps:
+      - name: Skip politely when not configured
+        id: cfg
+        run: |
+          if [ -z "$DB" ] || [ -z "$PASS" ] || [ -z "$BUCKET" ]; then echo "configured=false" >> "$GITHUB_OUTPUT"; echo "Off-platform backup is not configured (see docs/BACKUP_AND_RECOVERY.md). Nothing to do."; else echo "configured=true" >> "$GITHUB_OUTPUT"; fi
+      - name: Install matching PostgreSQL client
+        if: steps.cfg.outputs.configured == 'true'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client
+      - name: Dump (public + auth data), encrypt, upload
+        if: steps.cfg.outputs.configured == 'true'
+        run: |
+          set -euo pipefail
+          f="slate-$(date -u +%Y%m%dT%H%M%SZ).sql.gz.enc"
+          pg_dump "$DB" --no-owner --no-privileges --schema=public --schema=auth --data-only --column-inserts | gzip -9 | openssl enc -aes-256-cbc -pbkdf2 -iter 600000 -salt -pass env:PASS -out "$f"
+          test -s "$f"
+          ep=${ENDPOINT:+--endpoint-url "$ENDPOINT"}
+          aws s3 cp "$f" "s3://$BUCKET/the-slate/$f" $ep
+          echo "uploaded $f ($(stat -c %s "$f") bytes)"

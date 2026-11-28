@@ -1,0 +1,71 @@
+name: Slate daily health check
+
+# Runs every day at 08:00 India Standard Time (IST = UTC+5:30  ->  02:30 UTC).
+# GitHub runs scheduled workflows only from the DEFAULT branch, so this starts after THE SLATE is merged to main.
+# STRICTLY READ-ONLY: checks GitHub, Vercel and Supabase; never redeploys, deletes or changes anything.
+# On any FAIL it opens (or updates) a GitHub issue labelled `slate-health` — GitHub emails you — and optionally pings ALERT_WEBHOOK_URL.
+on:
+  schedule:
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+  security-events: read
+
+concurrency:
+  group: slate-health
+  cancel-in-progress: false
+
+jobs:
+  health:
+    name: Check GitHub · Vercel · Supabase
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: Run checks
+        id: check
+        working-directory: the-slate
+        continue-on-error: true
+        run: node scripts/health/check.mjs --out "$RUNNER_TEMP/report.md" --json "$RUNNER_TEMP/report.json"
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.HEALTH_GITHUB_TOKEN || github.token }}
+          APP_URL: ${{ vars.APP_URL }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ vars.SUPABASE_ANON_KEY }}
+          SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ vars.VERCEL_TEAM_ID }}
+          ALERT_WEBHOOK_URL: ${{ secrets.ALERT_WEBHOOK_URL }}
+      - name: Publish report to the run summary
+        if: always()
+        run: cat "$RUNNER_TEMP/report.md" >> "$GITHUB_STEP_SUMMARY"
+      - name: Open / update an issue when something failed
+        if: steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create slate-health --color B60205 --description "THE SLATE daily health check" 2>/dev/null || true
+          existing=$(gh issue list --label slate-health --state open --json number --jq '.[0].number' || true)
+          title="THE SLATE health check failed — $(date -u +%Y-%m-%d)"
+          if [ -n "$existing" ]; then gh issue comment "$existing" --body-file "$RUNNER_TEMP/report.md"
+          else gh issue create --label slate-health --title "$title" --body-file "$RUNNER_TEMP/report.md"; fi
+      - name: Close the open health issue once everything is green again
+        if: steps.check.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for n in $(gh issue list --label slate-health --state open --json number --jq '.[].number'); do
+            gh issue close "$n" --comment "Back to green on $(date -u +%F). Latest report is in the workflow run summary."
+          done
+      - name: Fail the run if any check failed
+        if: steps.check.outcome == 'failure'
+        run: exit 1

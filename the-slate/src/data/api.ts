@@ -139,7 +139,8 @@ export const api = {
   markRead: async (ids: string[]) => { if (ids.length) await must(supabase.from('notifications').update({ read_at: new Date().toISOString() }).in('id', ids).select('id')); },
   /** Inserts an in-app notification once (the unique dedupe key is shared with the server job). Returns true only if THIS call created it. */
   localNotice: async (n: { kind: string; title: string; body?: string; link?: string; dedupe: string }): Promise<boolean> => {
-    const { data } = await supabase.from('notifications').upsert({ kind: n.kind, title: n.title, body: n.body ?? null, link: n.link ?? null, dedupe_key: n.dedupe }, { onConflict: 'user_id,dedupe_key', ignoreDuplicates: true }).select('id');
+    const { data, error } = await supabase.from('notifications').upsert({ kind: n.kind, title: n.title, body: n.body ?? null, link: n.link ?? null, dedupe_key: n.dedupe }, { onConflict: 'user_id,dedupe_key', ignoreDuplicates: true }).select('id');
+    if (error) throw new Error(friendlyError(error));
     return (data?.length ?? 0) > 0;
   },
   sop: async () => (await must(supabase.rpc('slate_ensure_sop'))) as SopDoc,

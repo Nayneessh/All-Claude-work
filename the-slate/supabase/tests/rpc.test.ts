@@ -267,6 +267,11 @@ describe('audit trail, SOP and notifications', () => {
     expect(revs[0].body).toBe(''); // snapshot of the content before the first edit; edits within 10 minutes collapse
     expect((await rpc(A, `select * from public.slate_ensure_sop()`)).length).toBe(1); // idempotent
   });
+  it('the dedupe ledger works as an ON CONFLICT arbiter (what the reminder job and the in-app watcher actually do)', async () => {
+    const ins = () => as(db, A, async () => (await db.query(`insert into public.notifications (kind, title, dedupe_key) values ('task_reminder', 'x', 'task:9:2026-12-01:primary') on conflict (user_id, dedupe_key) do nothing returning id`)).rows);
+    expect(await ins()).toHaveLength(1); expect(await ins()).toHaveLength(0); // second attempt is silently ignored, nothing returned -> "already announced"
+    await as(db, A, () => db.query(`insert into public.notifications (kind, title) values ('system', 'a'), ('system', 'b')`)); // rows without a key are never de-duplicated
+  });
   it('notification de-duplication ledger prevents double sends', async () => {
     await as(db, A, () => db.query(`insert into public.notifications (kind, title, dedupe_key) values ('task_reminder', 'x', 'task:1:2026-12-01')`));
     expect(await failure(as(db, A, () => db.query(`insert into public.notifications (kind, title, dedupe_key) values ('task_reminder', 'x', 'task:1:2026-12-01')`)))).not.toBeNull();
