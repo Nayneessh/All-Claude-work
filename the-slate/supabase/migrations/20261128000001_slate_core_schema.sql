@@ -240,6 +240,9 @@ create table public.backup_runs (
 -- ---------------------------------------------------------------------------------------------------
 -- 2. Back-fill from existing data (triggers do not exist yet, so legacy timestamps are untouched)
 -- ---------------------------------------------------------------------------------------------------
+-- Back-fill must not rewrite legacy `updated_at` values: pause the touch trigger for the duration.
+alter table public.mandates disable trigger mandates_updated;
+
 insert into public.companies (user_id, name)
 select distinct on (user_id, lower(btrim(company))) user_id, btrim(company)
 from public.mandates where company is not null and btrim(company) <> ''
@@ -315,6 +318,8 @@ select user_id, mandate_id, candidate_id, 'cv_uploaded', 'CV uploaded: ' || file
 update public.mandates m set last_activity_at = x.last_at
 from (select mandate_id, max(occurred_at) last_at from public.recruitment_activities where meaningful and mandate_id is not null group by mandate_id) x
 where x.mandate_id = m.id;
+
+alter table public.mandates enable trigger mandates_updated;
 
 -- Tasks: keep the legacy "nudge 1h after due time" behaviour as an explicit follow-up setting; map XP to difficulty buckets.
 update public.slate_tasks set reminder_time = due_time, followup_minutes = 60 where due_time is not null;

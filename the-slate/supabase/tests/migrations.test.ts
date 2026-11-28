@@ -40,9 +40,9 @@ describe('upgrade path: legacy Hiring Copilot data survives and is back-filled',
     await db.exec(migrationSql(files[0])); // baseline only
     await addUsers(db);
     await db.exec(`
-      insert into public.mandates (id, user_id, title, company, level, urgency, status, started_on, target_close, agencies, agency_shared, agency_shared_at, created_at, work_mode)
-        values ('${M1}', '${A}', 'CFO', 'INFINX', 'CXO / C-suite', 'Critical', 'active', '2026-11-01', '2026-12-15', array['Michael Page','Russell Reynolds'], true, '2026-11-03T10:00:00Z', '2026-11-01T05:00:00Z', 'Hybrid'),
-               ('${M2}', '${A}', 'VP Ops', 'infinx ', 'SVP / VP', 'Low', 'closed', null, null, '{}', false, null, '2026-10-20T05:00:00Z', null);
+      insert into public.mandates (id, user_id, title, company, level, urgency, status, started_on, target_close, agencies, agency_shared, agency_shared_at, created_at, updated_at, work_mode)
+        values ('${M1}', '${A}', 'CFO', 'INFINX', 'CXO / C-suite', 'Critical', 'active', '2026-11-01', '2026-12-15', array['Michael Page','Russell Reynolds'], true, '2026-11-03T10:00:00Z', '2026-11-01T05:00:00Z', '2026-11-02T06:30:00Z', 'Hybrid'),
+               ('${M2}', '${A}', 'VP Ops', 'infinx ', 'SVP / VP', 'Low', 'closed', null, null, '{}', false, null, '2026-10-20T05:00:00Z', '2026-10-21T05:00:00Z', null);
       insert into public.candidates (id, user_id, mandate_id, name, status, stage, source, rounds, status_log, created_at, joining_date)
         values ('${C1}', '${A}', '${M1}', 'Asha Rao', 'active', 'r2', 'LinkedIn', '[{"round":"Round 1","status":"cleared"}]', '[{"at":"2026-11-05T05:00:00Z","stage":"contacted","note":"first call","label":"Contacted"},{"at":"2026-11-08T05:00:00Z","stage":"r2","note":"","label":"R2"}]', '2026-11-04T05:00:00Z', null),
                ('${C2}', '${A}', '${M1}', 'Vikram Shah', 'offered', null, 'Naukri', '[]', '[]', '2026-11-06T05:00:00Z', '2026-12-20'),
@@ -94,6 +94,10 @@ describe('upgrade path: legacy Hiring Copilot data survives and is back-filled',
     expect(new Date(m[0].last_activity_at).toISOString()).toBe('2026-11-09T05:00:00.000Z'); // the comment is the latest meaningful event
     const kinds = await q<{ kind: string }>(db, `select distinct kind from public.recruitment_activities where mandate_id = '${M1}'`);
     expect(kinds.map((k) => k.kind)).toEqual(expect.arrayContaining(['mandate_created', 'clock_started', 'candidate_added', 'comment_added', 'step_status_changed']));
+  });
+  it('legacy updated_at / created_at timestamps are not rewritten by the back-fill', async () => {
+    const r = await q<{ updated_at: string }>(db, `select updated_at from public.mandates where id = '${M1}'`);
+    expect(new Date(r[0].updated_at).toISOString()).toBe('2026-11-02T06:30:00.000Z');
   });
   it('legacy nudge behaviour is preserved as explicit reminder fields', async () => {
     const t = await q<{ reminder_time: string | null; followup_minutes: number | null; title: string }>(db, `select title, reminder_time, followup_minutes from public.slate_tasks order by title`);
