@@ -81,3 +81,28 @@ Honest notes on this round:
 * CI run 4 (a re-run after adding annotations) **failed** in the release smoke step: the first-generation heuristic — look for words such as "monster/next/today" in a `uiautomator` dump taken 10 s after launch — found none, although the same APK passed it in runs 1 and 3 and no crash was logged. That check was timing-sensitive (a WebView's text is not always exposed to `uiautomator` yet). It was replaced in `scripts/android/emulator-verify.sh` by a sturdier one: wait until the app window has focus, the process is alive, no `FATAL EXCEPTION`/ANR in logcat — also after a force-stop. **Run 5 on that script passed in full** (`https://github.com/Nayneessh/All-Claude-work/actions/runs/40193958874`): static checks, release install/launch/relaunch, and the WebView kill-and-relaunch journey. Result history: run 1 partial (journey client unsupported), run 2 failed (my journey assumed a Monday), run 3 passed, run 4 failed (flaky heuristic), run 5 passed.
 * Release (non-debuggable) builds have WebView debugging disabled by design, so the DevTools journey uses the debug twin; the logic bundle is identical.
 * Not verified: a physical phone, TalkBack, push notifications (including Snooze), battery/thermal behaviour, Google Play Protect prompts on a real device, and installing the *production-signed* 1.0.1 over the *production-signed* 1.0.0 on a device (the install-over test used same-key debug builds on emulators; the production files are tied together by identical signer certificate, package and a higher versionCode — see above).
+
+## Friends edition 1.0.1 — verification (2026-11-28)
+
+`MonsterGains-Friends-1.0.1.apk` (SHA-256 `e394c661…3616d`, signer `95db3a58…88b2`, package `com.monstergains.app.friends`, versionCode 1) — from the `release-friends` branch.
+
+| Check | Android 14 (API 34) | Android 16 (API 36) |
+| --- | --- | --- |
+| Static: signature v2 verified, signer = published, zipalign, application id, SHA-256 of the file | passed | passed |
+| Release APK installs, reaches the foreground, no crash, relaunches after force-stop | passed | passed |
+| First launch shows "Start with a clean slate"; after onboarding "No program yet" and **nothing from the owner's routine on screen** | passed | passed |
+| Quick workout → set logged → app process killed → relaunched → set still there | passed | passed |
+| Real touch + real soft keyboard in the exercise search, a set row and a sheet field: no blur, still focused, no keyboard open/close flicker, text arrives | passed | passed |
+
+**Final result: two independent runs (`46136070450`, `46136072654`), all four emulator jobs passed.** Earlier runs the same day were mixed, and the reasons were test-harness or emulator problems, found from the logs and fixed — not app defects:
+
+* the touch-calibration step tapped a fixed screen point, which hit real buttons on days where the owner build shows a planned workout (it failed the *owner* build on both API levels that day) → calibration now reads the WebView position from the accessibility tree, no tap;
+* the emulator's own launcher raised an "Application Not Responding" dialog that took focus while the app process was alive and no crash was logged → launch is retried up to 3× after dismissing system dialogs;
+* `adb input text` repeated a key once ("bench" arrived as "beench") while the keyboard was up for all 10 samples and focus never moved → the field is cleared and retyped once; the retype must be exact;
+* the WebView connection dropped right after the data wipe on a fresh install → one retry of the onboarding from a wiped app;
+* one early API 36 run counted 2 keyboard open/close transitions before the keyboard state sequence was logged, so that single reading cannot be explained after the fact; every later run with the sequence logged showed the keyboard up and steady.
+
+The pass/fail rules for focus loss and keyboard flicker were not loosened. On failure the run now keeps a logcat tail, a screenshot and the visible page text.
+
+Limits: emulators only (stock keyboard), no physical phone; the debug twin of the same bundle is what the WebView journey drives; the "owner" edition was last verified in full on 2026-10-26 (run 8) and again on API 36 on 2026-11-28 — its API 34 rerun that day failed at launch from the launcher ANR above, before the app started.
+

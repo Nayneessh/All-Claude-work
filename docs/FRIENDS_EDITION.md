@@ -43,7 +43,7 @@ The same app and the same Supabase project, built so that someone else can use i
 
 * `MonsterGains-Friends-1.0.1.apk` — 5,465,073 bytes, SHA-256 `e394c661e86daa751cfeb3d0ef477eb215a897f2f57cb22061fd74412683616d`
 * signer SHA-256 `95db3a583cf37304eb114ddc68a88773a26ccf3c6137f5cd5394b6b84ca988b2` (CN=Monster Gains Friends Edition, RSA-4096, valid to 2056)
-* built from commit `275d32e` (workflow run 1); web journeys for this edition: 4 passing (`e2e-friends/`); emulator results: see *Verification* in `docs/ANDROID_RELEASE.md`.
+* built from commit `275d32e` (workflow run 1); web journeys for this edition: 4 passing (`e2e-friends/`); **emulator: all checks passed on Android 14 and 16 in two independent runs** — details, and the harness problems found on the way, in `docs/ANDROID_RELEASE.md` → *Friends edition 1.0.1 — verification*.
 
 ## Key custody — read this
 
