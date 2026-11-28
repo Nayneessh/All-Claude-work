@@ -113,8 +113,9 @@ async function keyboardStability(page, cal, label, openByTapping, text) {
   if (!(await isFocused())) await realTap(page, cal, field);
   await sleep(800);
   const samples = [];
+  const trace = []; // T = soft keyboard shown, F = hidden, ? = unknown — printed so a failure can be read, not guessed
   let sampling = true;
-  const sampler = (async () => { while (sampling) { samples.push(await imeShown()); await sleep(200); } })();
+  const sampler = (async () => { while (sampling) { const v = await imeShown(); samples.push(v); trace.push(v === null ? '?' : v ? 'T' : 'F'); await sleep(200); } })();
   for (const ch of text) { await device.shell(`input text ${ch}`); await sleep(750); } // spans several 1 s re-renders of the screen
   await sleep(1200);
   sampling = false; await sampler;
@@ -124,7 +125,7 @@ async function keyboardStability(page, cal, label, openByTapping, text) {
   const stats = await page.evaluate(() => window.__kb);
   const value = await field.inputValue();
   const focused = await isFocused();
-  console.log(`   [${label}] value="${value}" blur=${stats.blur} viewportResize=${stats.resize} imeSamples=${known.length} imeShown=${shownAtLeastOnce} imeTransitions=${transitions} focused=${focused}`);
+  console.log(`   [${label}] value="${value}" blur=${stats.blur} viewportResize=${stats.resize} imeSamples=${known.length} imeShown=${shownAtLeastOnce} imeTransitions=${transitions} focused=${focused}\n   [${label}] ime sequence (200 ms steps): ${trace.join('')}`);
   await device.screenshot({ path: `${OUT}/06-keyboard-${label.replace(/\W+/g, '-').toLowerCase()}.png` });
   check(value === text, `${label}: everything typed arrived ("${value}")`);
   check(stats.blur === 0, `${label}: the field never lost focus while typing (blur events=${stats.blur})`);
@@ -136,6 +137,16 @@ async function keyboardStability(page, cal, label, openByTapping, text) {
 // ── scenarios ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 if (MODE === 'full' || MODE === 'seed' || MODE === 'keyboard') await device.shell(`pm clear ${PKG}`);
 let page = await launch();
+if (MODE === 'full' || MODE === 'seed' || MODE === 'keyboard') {
+  // right after "pm clear" the system can restart the app while we are attaching; one relaunch is what a user would do too
+  for (let attempt = 1; ; attempt++) {
+    try { await page.getByRole('button', { name: 'Next' }).waitFor({ timeout: 30_000 }); break; } catch (e) {
+      if (attempt === 2) throw e;
+      console.log(`   first screen not reachable on attempt 1 (${String(e.message).split('\n')[0]}) — relaunching once`);
+      await device.shell(`am force-stop ${PKG}`); await sleep(2000); page = await launch();
+    }
+  }
+}
 
 if (MODE === 'full') {
   await onboard(page);
