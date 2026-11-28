@@ -12,7 +12,9 @@ Built from the product blueprint *Fitness App — Product Blueprint & Requiremen
 2. Open the file on the phone and allow *Install unknown apps* for your browser/file manager when asked.
 3. First launch: three short screens → **Start training**. The v6 routine is already loaded. No account is required; sign in later to back up and sync.
 
-Updating later? Install the next APK **over** the old one (same signing key) — your data stays. Do **not** uninstall first.
+Updating later? Install the next APK **over** the old one (same signing key) — your data stays. Do **not** uninstall first. (Note: the original signing key was lost on 2026-11-24 — see [docs/FRIENDS_EDITION.md](docs/FRIENDS_EDITION.md#key-custody--read-this).)
+
+**Sharing with someone else?** Use the **friends edition** — same app and Supabase, but it starts empty (no routine in the file) and installs as its own app. See [docs/FRIENDS_EDITION.md](docs/FRIENDS_EDITION.md).
 
 ## What it does
 

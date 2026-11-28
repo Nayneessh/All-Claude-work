@@ -33,6 +33,8 @@ If the repository secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`
 
 ## Key custody — read this
 
+> **Update 2026-11-28 — the original release key is lost.** The workspace that signed 1.0.0 and 1.0.1 was rebuilt on 2026-11-24; `.release/` (git-ignored by design) did not survive and no copy exists. The installed 1.0.1 keeps working and keeps its data, but a future build signed with a different key cannot be installed over it. Details and the safe path for a future owner update: [FRIENDS_EDITION.md → Key custody](FRIENDS_EDITION.md#key-custody--read-this). The paragraph below describes the intent; it did not prevent this.
+
 The release key lives only in the project working directory `.release/` of the machine that built this release (git-ignored, mode 600; never committed, never printed). **If it is lost, no future update can be installed over this version** (Android compares signer certificates). Your data is not lost in that case (sync / export / snapshots), but you would have to install fresh and restore.
 Recommended: copy `.release/` to a password manager or an encrypted drive now, and optionally add the four GitHub secrets above so CI can sign without this machine. The agent that built this release can hand the key file to you on request; it is intentionally not attached to this repository or to the chat.
 
