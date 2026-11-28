@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ErrorBox, Icon, Loading, Empty, Select, TextInput, Seg } from '../../ui/kit';
 import { Kpi } from '../../ui/charts';
@@ -21,7 +21,8 @@ export default function MandatesPage() {
     level: sp.get('level') ?? '', consultant: sp.get('consultant') ?? '', status: sp.get('status') ?? '', sort: (sp.get('sort') as MandateSort) ?? 'priority' };
   const set = (patch: Partial<MandateFilters>) => { const n = new URLSearchParams(sp); for (const [k, v] of Object.entries(patch)) { if (v && v !== (DEFAULT_FILTERS as never as Record<string, string>)[k]) n.set(k, String(v)); else n.delete(k); } setSp(n, { replace: true }); };
   const [text, setText] = useState(f.q); const dq = useDebounced(text, 200);
-  if (dq !== f.q && dq === text) set({ q: dq });
+  // Push the debounced search text into the URL from an effect (never during render, which can race with a click's navigation).
+  useEffect(() => { if (dq !== (sp.get('q') ?? '')) set({ q: dq }); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [dq]);
 
   const rows = useMemo(() => withClocks(q.data ?? [], { today, tz: settings.timezone, inactivityDays: settings.inactivityDays, nearCloseDays: settings.nearCloseDays }), [q.data, today, settings]);
   const k = useMemo(() => mandateKpis(rows), [rows]);

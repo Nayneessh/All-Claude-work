@@ -13,8 +13,9 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   reporter: [['list'], ['json', { outputFile: 'test-results/e2e.json' }]],
-  use: { baseURL: 'http://127.0.0.1:4175', screenshot: 'only-on-failure', trace: 'off', actionTimeout: 15_000 },
-  webServer: { command: 'npm run preview', url: 'http://127.0.0.1:4175', reuseExistingServer: true, timeout: 60_000 },
+  use: { baseURL: process.env.E2E_BASE_URL ?? 'http://127.0.0.1:4175', screenshot: 'only-on-failure', trace: 'off', actionTimeout: 15_000 },
+  // When E2E_BASE_URL points at a deployed site (preview/production) no local server is started.
+  webServer: process.env.E2E_BASE_URL ? undefined : { command: 'npm run preview', url: 'http://127.0.0.1:4175', reuseExistingServer: true, timeout: 60_000 },
   projects: [
     { name: 'setup', testMatch: /auth\.setup\.ts/ },
     { name: 'desktop', testMatch: /slate\.spec\.ts/, use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, storageState: 'test-results/auth.json' }, dependencies: ['setup'] },
