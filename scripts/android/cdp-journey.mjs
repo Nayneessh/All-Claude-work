@@ -119,8 +119,16 @@ async function keyboardStability(page, cal, label, openByTapping, text) {
   const trace = []; // T = soft keyboard shown, F = hidden, ? = unknown — printed so a failure can be read, not guessed
   let sampling = true;
   const sampler = (async () => { while (sampling) { const v = await imeShown(); samples.push(v); trace.push(v === null ? '?' : v ? 'T' : 'F'); await sleep(200); } })();
-  for (const ch of text) { await device.shell(`input text ${ch}`); await sleep(750); } // spans several 1 s re-renders of the screen
-  await sleep(1200);
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    for (const ch of text) { await device.shell(`input text ${ch}`); await sleep(750); } // spans several 1 s re-renders of the screen
+    await sleep(1200);
+    const typed = await field.inputValue();
+    if (typed === text || attempt === 2) break;
+    // adb's key injection can repeat or swallow a key on a loaded CI VM (seen: "bench" -> "beench" while the keyboard stayed up and focus never moved).
+    // One clean retype must then be exact — a real input bug would repeat — and the focus / keyboard checks below cover both attempts.
+    console.log(`   [${label}] typed "${text}" but the field holds "${typed}" — clearing it and typing once more`);
+    await field.fill(''); await sleep(600);
+  }
   sampling = false; await sampler;
   const known = samples.filter((s) => s !== null);
   const shownAtLeastOnce = known.some(Boolean);

@@ -13,6 +13,18 @@ crashes() { adb logcat -d | grep -E "FATAL EXCEPTION|ANR in $PKG|Process: $PKG.*
 focused() { adb shell dumpsys window 2>/dev/null | tr -d '\r' | grep -E "mCurrentFocus|mFocusedApp" | head -3; }
 wait_focus() { for _ in $(seq 1 45); do if focused | grep -q "$PKG"; then return 0; fi; sleep 1; done; return 1; }
 launch() { adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null; }
+# On a starved CI VM the emulator's own launcher can raise an "Application Not Responding" dialog that takes the focus (seen: the app process was alive and
+# had not crashed). Dismiss system dialogs and launch again, up to three times, before calling it a failure.
+launch_and_focus() {
+  for try in 1 2 3; do
+    launch
+    if wait_focus; then return 0; fi
+    echo "app not in the foreground on try $try: $(focused | tr '\n' ' ' | cut -c1-200) — dismissing system dialogs and launching again"
+    adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS >/dev/null 2>&1 || true
+    sleep 3
+  done
+  return 1
+}
 alive() { [ -n "$(adb shell pidof "$PKG" | tr -d '\r')" ]; }
 
 # On any failure keep evidence: the tail of logcat (uploaded with the run) and the lines that say whether the APP died or the emulator itself was starved.
@@ -37,8 +49,7 @@ adb uninstall "$PKG" >/dev/null 2>&1 || true
 adb install -r "$REL"
 adb shell pm list packages | grep -q "$PKG"
 adb logcat -c
-launch
-wait_focus || { echo "release app never reached the foreground"; focused; crashes; exit 1; }
+launch_and_focus || { echo "release app never reached the foreground"; focused; crashes; exit 1; }
 sleep 8
 shot 01-release-launch
 adb shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1 || true
@@ -49,8 +60,7 @@ if [ -n "$(crashes)" ]; then echo "CRASH after release launch"; crashes; exit 1;
 alive || { echo "release app process is not running"; exit 1; }
 echo "release launched, in the foreground, process alive, no crash"
 adb shell am force-stop "$PKG"; sleep 2
-launch
-wait_focus || { echo "release app did not come back after force-stop"; focused; crashes; exit 1; }
+launch_and_focus || { echo "release app did not come back after force-stop"; focused; crashes; exit 1; }
 sleep 5
 [ -z "$(crashes)" ] || { echo "CRASH on relaunch"; crashes; exit 1; }
 alive || { echo "release app died after relaunch"; exit 1; }
