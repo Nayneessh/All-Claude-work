@@ -3,7 +3,7 @@ import { api } from '../../data/api';
 import { K, useAction, useConfig } from '../../data/hooks';
 import type { ConfigKind, ConfigOption, StageKind } from '../../domain/types';
 import { slug } from '../../lib/format';
-import { Chip, Select, TextInput } from '../../ui/kit';
+import { Chip, Loading, Select, TextInput } from '../../ui/kit';
 
 const STAGE_KINDS: { value: StageKind; label: string }[] = [{ value: 'progress', label: 'In progress' }, { value: 'hold', label: 'On hold' }, { value: 'selected', label: 'Selected' }, { value: 'offered', label: 'Offered' }, { value: 'joined', label: 'Joined' }, { value: 'rejected', label: 'Rejected (needs reason)' }, { value: 'dropped', label: 'Dropped (needs reason)' }];
 
@@ -11,6 +11,7 @@ const STAGE_KINDS: { value: StageKind; label: string }[] = [{ value: 'progress',
 export function ConfigEditor({ kind, noun, help }: { kind: ConfigKind; noun: string; help?: string }) {
   const cfg = useConfig(); const { run, busy } = useAction(); const [label, setLabel] = useState('');
   const rows = cfg.by(kind, false);
+  if (cfg.loading) return <Loading />;
   const inv = [K.config];
   const save = (o: ConfigOption, patch: Partial<{ label: string; sort_order: number; active: boolean; meta: Record<string, unknown> }>) => run(() => api.saveConfig({ id: o.id, kind, label: patch.label ?? o.label, sort_order: patch.sort_order ?? o.sort_order, active: patch.active ?? o.active, meta: patch.meta ?? o.meta }), { invalidate: inv });
   const swap = async (i: number, d: -1 | 1) => { const a = rows[i], b = rows[i + d]; if (!a || !b) return; await run(async () => { await api.saveConfig({ id: a.id, kind, label: a.label, sort_order: b.sort_order, active: a.active, meta: a.meta }); await api.saveConfig({ id: b.id, kind, label: b.label, sort_order: a.sort_order === b.sort_order ? a.sort_order + d : a.sort_order, active: b.active, meta: b.meta }); }, { invalidate: inv }); };

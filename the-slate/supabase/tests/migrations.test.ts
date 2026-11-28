@@ -21,6 +21,13 @@ describe('migrations replay from zero', () => {
     expect(f).toEqual([...f].sort());
     expect(new Set(f).size).toBe(f.length);
   });
+  it('API roles hold no TRUNCATE/REFERENCES/TRIGGER privileges and cannot touch the sign-up whitelist', async () => {
+    const db = await freshDb();
+    const bad = await q<{ table_name: string; privilege_type: string }>(db, `select table_name, privilege_type from information_schema.role_table_grants where table_schema='public' and grantee in ('anon','authenticated') and privilege_type in ('TRUNCATE','REFERENCES','TRIGGER')`);
+    expect(bad).toEqual([]);
+    expect(await q(db, `select 1 from information_schema.role_table_grants where table_name='allowed_emails' and grantee in ('anon','authenticated')`)).toEqual([]);
+    expect(await failure(as(db, A, () => db.query(`select * from public.allowed_emails`)))).not.toBeNull();
+  });
   it('sign-up whitelist still blocks unknown emails', async () => {
     const db = await freshDb();
     const err = await failure(db.exec(`insert into auth.users (id, email) values ('33333333-3333-4333-8333-333333333333', 'stranger@example.test')`));

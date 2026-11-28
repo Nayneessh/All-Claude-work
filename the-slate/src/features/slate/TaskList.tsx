@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../../data/api';
-import { useAction } from '../../data/hooks';
+import { friendlyError } from '../../lib/supabase';
+import { useToast } from '../../ui/Toast';
 import { descendants, expandOccurrences, isDone, progressFor, type Occurrence } from '../../domain/recurrence';
 import type { Task, TaskDone, TaskOverride } from '../../domain/types';
 import { addDays, dayName, dow, fmtDateShort, fmtDuration, fmtTime, type DateStr } from '../../lib/time';
@@ -11,8 +12,14 @@ import { DIFF_COLOR } from './useSlate';
 type View = 'today' | 'upcoming' | 'overdue' | 'all' | 'done';
 const repeatLabel = (t: Task) => t.repeat === 'once' ? '' : t.repeat === 'daily' ? 'Every day' : t.repeat === 'weekdays' ? 'Mon–Fri' : `${(t.rec_days ?? []).map((d) => dayName(d)).join(' ')}${t.rec_every_weeks > 1 ? ` · every ${t.rec_every_weeks}w` : ''}`;
 
-export function TaskList({ tasks, done, overrides, today, doneKey, onEdit, onAdd }: { tasks: Task[]; done: TaskDone[]; overrides: TaskOverride[]; today: DateStr; doneKey: readonly unknown[]; onEdit: (t: Task) => void; onAdd: (preset: { parent_id?: string; title?: string }) => void }) {
-  const [view, setView] = useState<View>('today'); const qc = useQueryClient(); const { run } = useAction();
+export function TaskList({ tasks, done: doneRaw, overrides, today, onEdit, onAdd }: { tasks: Task[]; done: TaskDone[]; overrides: TaskOverride[]; today: DateStr; doneKey?: readonly unknown[]; onEdit: (t: Task) => void; onAdd: (preset: { parent_id?: string; title?: string }) => void }) {
+  const [view, setView] = useState<View>('today'); const qc = useQueryClient(); const toast = useToast();
+  // Pending ticks overlay the server data until the server confirms, so a background refresh can never flip a checkbox back.
+  const [pending, setPending] = useState<Record<string, { v: boolean; n: number }>>({}); const seq = useRef(0);
+  const done = useMemo(() => {
+    const keys = Object.keys(pending); if (!keys.length) return doneRaw;
+    return [...doneRaw.filter((d) => !(`${d.task_id}|${d.day}` in pending)), ...keys.map((k) => { const [task_id, day] = k.split('|'); return { task_id, day, completed_at: '', undone_at: pending[k].v ? null : 'pending' }; })];
+  }, [doneRaw, pending]);
   const top = useMemo(() => tasks.filter((t) => !t.parent_id), [tasks]);
   const occ = (from: DateStr, to: DateStr) => expandOccurrences(top, overrides, done, from, to);
   const todayOcc = useMemo(() => occ(today, today), [top, overrides, done, today]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -21,13 +28,13 @@ export function TaskList({ tasks, done, overrides, today, doneKey, onEdit, onAdd
   const recentDone = useMemo(() => done.filter((d) => !d.undone_at && d.day >= addDays(today, -7)).sort((a, b) => b.completed_at.localeCompare(a.completed_at)), [done, today]);
   const counts = { today: todayOcc.filter((o) => !o.done).length, upcoming: upcoming.length, overdue: overdue.length };
 
-  /** Optimistic: flip the checkbox immediately, roll back if the server refuses. */
-  const toggle = (taskId: string, day: DateStr, value: boolean) => run(async () => {
-    const prev = qc.getQueryData<TaskDone[]>(doneKey);
-    qc.setQueryData<TaskDone[]>(doneKey, (cur = []) => { const rest = cur.filter((d) => !(d.task_id === taskId && d.day === day)); return [...rest, { task_id: taskId, day, completed_at: new Date().toISOString(), undone_at: value ? null : new Date().toISOString() }]; });
-    try { await api.setDone(taskId, day, value); } catch (e) { qc.setQueryData(doneKey, prev); throw e; }
-    qc.invalidateQueries({ queryKey: ['slate'] });
-  });
+  /** Instant, concurrent ticking: the overlay shows the new state immediately; a failure rolls back just that row. */
+  const toggle = (taskId: string, day: DateStr, value: boolean) => {
+    const key = `${taskId}|${day}`; const n = ++seq.current;
+    setPending((p) => ({ ...p, [key]: { v: value, n } }));
+    const settle = () => setPending((p) => { if (p[key]?.n !== n) return p; const { [key]: _drop, ...rest } = p; void _drop; return rest; });
+    api.setDone(taskId, day, value).then(() => qc.invalidateQueries({ queryKey: ['slate'] })).then(settle).catch((e) => { settle(); toast.error(friendlyError(e)); });
+  };
   const row = (o: Occurrence) => <TaskRow key={`${o.task.id}|${o.originDay}`} task={o.task} day={o.originDay} shownDay={o.day} start={o.start} minutes={o.minutes} est={o.estMinutes} done={o.done} tasks={tasks} doneRows={done} toggle={toggle} onEdit={onEdit} onAdd={onAdd} today={today} />;
 
   return (

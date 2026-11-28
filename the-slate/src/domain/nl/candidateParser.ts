@@ -29,7 +29,7 @@ export function parseCandidateText(raw: string, ctx: CandidateParseContext): Par
   const nameWords: string[] = [];
   for (const w of words) {
     const bare = w.replace(/[,;:]$/, '');
-    if (nameWords.length >= 4 || STOP_NAME.test(bare) || !/^[A-Z][A-Za-z.'-]*$/.test(bare)) break;
+    if (nameWords.length >= 4 || STOP_NAME.test(bare) || !/^\p{Lu}[\p{L}.'’-]*$/u.test(bare)) break;
     nameWords.push(bare);
     if (/[,;:]$/.test(w)) break;
   }

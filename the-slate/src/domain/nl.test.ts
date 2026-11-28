@@ -74,6 +74,11 @@ describe('natural-language candidate (the example from the brief)', () => {
     const amb = parseCandidateText('Rahul Sharma for the CFO role', { today: TODAY, sources: SOURCES, mandates });
     expect(amb.fields.mandate_id).toBeUndefined(); expect(amb.ambiguous.mandate_id).toMatch(/Could be/);
   });
+  it('recognises names with accents, apostrophes and hyphens', () => {
+    for (const n of ['José Fernandes', "Shaun D'Souza", 'Anne-Marie Iyer', 'Ananya Bhattacharya-Rao', 'Dr. Ravi Menon']) {
+      expect(parseCandidateText(`${n}, currently Director at ABC Ltd`, { today: TODAY, sources: SOURCES }).fields.name, n).toBe(n);
+    }
+  });
   it('lower-case or empty input gives no name instead of a wrong one', () => {
     expect(parseCandidateText('met someone interesting yesterday', { today: TODAY, sources: SOURCES }).fields.name).toBeUndefined();
     expect(parseCandidateText('', { today: TODAY, sources: SOURCES }).missing).toContain('name');

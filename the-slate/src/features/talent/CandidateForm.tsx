@@ -83,8 +83,8 @@ export function CandidateForm({ candidate, presetMandateId, startInQuick, onClos
     if (id) { clearDraft(); setDirty(false); onSaved(id); }
   }
   return (
-    <Modal drawer dirty={dirty} onClose={onClose} title={editing ? `Edit — ${candidate!.name}` : 'New candidate'}
-      footer={<><button className="btn" onClick={onClose} type="button">Cancel</button><button className="btn primary" onClick={save} disabled={busy} type="button">{busy ? <span className="spinner" /> : editing ? 'Save changes' : dup ? 'Save anyway' : 'Confirm & add candidate'}</button></>}>
+    <Modal drawer dirty={dirty} onClose={() => { clearDraft(); onClose(); }} title={editing ? `Edit — ${candidate!.name}` : 'New candidate'}
+      footer={<><button className="btn" onClick={() => { clearDraft(); onClose(); }} type="button">Cancel</button><button className="btn primary" onClick={save} disabled={busy} type="button">{busy ? <span className="spinner" /> : editing ? 'Save changes' : dup ? 'Save anyway' : 'Confirm & add candidate'}</button></>}>
       <Tabs value={tab} onChange={setTab} tabs={[{ value: 'quick', label: <><Icon n="spark" size={15} /> Describe it</> }, { value: 'form', label: 'Candidate form' }]} />
       {tab === 'quick' && (
         <div className="stack">

@@ -71,8 +71,8 @@ export function MandateForm({ mandate, startInQuick, onClose, onSaved }: { manda
   const agencyNames = useMemo(() => (agencies.data ?? []).map((a) => a.name), [agencies.data]);
 
   return (
-    <Modal drawer dirty={dirty} onClose={onClose} title={editing ? `Edit mandate — ${mandate!.title}` : 'New mandate'}
-      footer={<><button className="btn" onClick={onClose} type="button">Cancel</button><button className="btn primary" onClick={save} disabled={busy} type="button">{busy ? <span className="spinner" /> : editing ? 'Save changes' : 'Confirm & create mandate'}</button></>}>
+    <Modal drawer dirty={dirty} onClose={() => { clearDraft(); onClose(); }} title={editing ? `Edit mandate — ${mandate!.title}` : 'New mandate'}
+      footer={<><button className="btn" onClick={() => { clearDraft(); onClose(); }} type="button">Cancel</button><button className="btn primary" onClick={save} disabled={busy} type="button">{busy ? <span className="spinner" /> : editing ? 'Save changes' : 'Confirm & create mandate'}</button></>}>
       <Tabs value={tab} onChange={setTab} tabs={[{ value: 'quick', label: <><Icon n="spark" size={15} /> Describe it</> }, { value: 'form', label: 'Mandate form' }]} />
       {tab === 'quick' && (
         <div className="stack">
@@ -112,7 +112,7 @@ export function MandateForm({ mandate, startInQuick, onClose, onSaved }: { manda
             </div>
             <label className="check full"><input type="checkbox" checked={f.confidential} onChange={(e) => set('confidential', e.target.checked)} /><span><b>{f.confidential ? 'Confidential mandate' : 'Open for advertisement'}</b> <span className="muted small">— tick for confidential; untick means it may be advertised</span></span></label>
             <Field label="Job description (PDF or Word, max 10 MB)" error={errors.file} full hint={editing && mandate!.jd_file_name ? `Current: ${mandate!.jd_file_name} — choosing a file replaces it (the old version is kept in history).` : undefined}>
-              <input className="input" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => { const x = e.target.files?.[0] ?? null; setFile(x); setDirty(true); setErrors({ ...errors, file: x ? validateDocument(x) ?? '' : '' }); }} />
+              <TextInput type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={(e) => { const x = e.target.files?.[0] ?? null; setFile(x); setDirty(true); setErrors({ ...errors, file: x ? validateDocument(x) ?? '' : '' }); }} />
             </Field>
             <Field label="Waiting on someone?" hint="e.g. HM feedback, client approval — feeds the “Waiting” filter"><TextInput value={f.waiting_on} onChange={(e) => set('waiting_on', e.target.value)} maxLength={120} /></Field>
             <Field label="Notes" full><TextArea rows={3} value={f.notes} onChange={(e) => set('notes', e.target.value)} maxLength={4000} /></Field>

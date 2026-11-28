@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode, type SelectHTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes } from 'react';
+import { createContext, useContext, useEffect, useId, useState, type ReactNode, type SelectHTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes } from 'react';
 
 const P = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
 const paths: Record<string, ReactNode> = {
@@ -20,22 +20,31 @@ const paths: Record<string, ReactNode> = {
 export const Icon = ({ n, size = 18 }: { n: keyof typeof paths | string; size?: number }) => <svg width={size} height={size} viewBox="0 0 24 24" {...P} aria-hidden="true">{paths[n]}</svg>;
 
 interface FieldProps { label: string; hint?: ReactNode; error?: string; flag?: string; missing?: boolean; required?: boolean; full?: boolean; children: ReactNode; htmlFor?: string }
+/** Each Field publishes an id; the TextInput/TextArea/Select inside it pick it up, so every label is programmatically tied to its control. */
+const FieldCtx = createContext<{ id: string; describedBy?: string } | null>(null);
 /** Form field wrapper. `flag` = value was inferred/ambiguous (amber), `missing` = needs attention (gold dashed). */
 export function Field({ label, hint, error, flag, missing, required, full, children, htmlFor }: FieldProps) {
+  const auto = useId(); const id = htmlFor ?? auto; const dId = `${id}-d`;
+  const hasDesc = !!(error || hint || flag);
   return (
-    <div className={`field ${error ? 'has-err' : ''} ${flag ? 'flag' : ''} ${missing ? 'miss' : ''} ${full ? 'full' : ''}`}>
-      <label htmlFor={htmlFor}>{label}{required && <span className="gold"> *</span>}</label>
-      {children}
-      {flag && <div className="hint" style={{ color: 'var(--amber)' }}>⚑ {flag}</div>}
-      {error ? <div className="err" role="alert">{error}</div> : hint ? <div className="hint">{hint}</div> : null}
-    </div>
+    <FieldCtx.Provider value={{ id, describedBy: hasDesc ? dId : undefined }}>
+      <div className={`field ${error ? 'has-err' : ''} ${flag ? 'flag' : ''} ${missing ? 'miss' : ''} ${full ? 'full' : ''}`}>
+        <label htmlFor={id}>{label}{required && <span className="gold" aria-hidden="true"> *</span>}</label>
+        {children}
+        <div id={dId}>
+          {flag && <div className="hint" style={{ color: 'var(--amber)' }}>⚑ {flag}</div>}
+          {error ? <div className="err" role="alert">{error}</div> : hint ? <div className="hint">{hint}</div> : null}
+        </div>
+      </div>
+    </FieldCtx.Provider>
   );
 }
-export const TextInput = (p: InputHTMLAttributes<HTMLInputElement>) => <input className="input" {...p} />;
-export const TextArea = (p: TextareaHTMLAttributes<HTMLTextAreaElement>) => <textarea className="textarea" {...p} />;
+export const TextInput = (p: InputHTMLAttributes<HTMLInputElement>) => { const c = useContext(FieldCtx); return <input className="input" id={c?.id} aria-describedby={c?.describedBy} {...p} />; };
+export const TextArea = (p: TextareaHTMLAttributes<HTMLTextAreaElement>) => { const c = useContext(FieldCtx); return <textarea className="textarea" id={c?.id} aria-describedby={c?.describedBy} {...p} />; };
 export function Select({ options, placeholder, ...p }: SelectHTMLAttributes<HTMLSelectElement> & { options: (string | { value: string; label: string })[]; placeholder?: string }) {
+  const c = useContext(FieldCtx);
   return (
-    <select className="select" {...p}>
+    <select className="select" id={c?.id} aria-describedby={c?.describedBy} {...p}>
       {placeholder !== undefined && <option value="">{placeholder}</option>}
       {options.map((o) => typeof o === 'string' ? <option key={o} value={o}>{o}</option> : <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
