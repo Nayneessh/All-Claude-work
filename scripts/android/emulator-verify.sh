@@ -15,6 +15,19 @@ wait_focus() { for _ in $(seq 1 45); do if focused | grep -q "$PKG"; then return
 launch() { adb shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null; }
 alive() { [ -n "$(adb shell pidof "$PKG" | tr -d '\r')" ]; }
 
+# On any failure keep evidence: the tail of logcat (uploaded with the run) and the lines that say whether the APP died or the emulator itself was starved.
+on_exit() {
+  rc=$?
+  if [ "$rc" -ne 0 ]; then
+    echo "== failure evidence (exit $rc)"
+    adb logcat -d -t 800 > "$OUT/logcat-tail.txt" 2>/dev/null || true
+    shot 99-failure || true
+    grep -E "FATAL EXCEPTION|ANR in|Process: .* died|am_proc_died|am_kill|lowmemorykiller|Out of memory|has died" "$OUT/logcat-tail.txt" 2>/dev/null | cut -c1-220 | head -25 || true
+    echo "app process now: $(adb shell pidof "$PKG" 2>/dev/null | tr -d '\r')  |  focus: $(focused | tr '\n' ' ' | cut -c1-200)"
+  fi
+}
+trap on_exit EXIT
+
 adb wait-for-device; adb shell input keyevent 82 || true
 API="$(adb shell getprop ro.build.version.sdk | tr -d '\r')"
 echo "::notice title=Emulator::Android $(adb shell getprop ro.build.version.release | tr -d '\r') (API $API), $(adb shell getprop ro.product.model | tr -d '\r')"
